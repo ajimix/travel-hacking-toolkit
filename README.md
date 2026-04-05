@@ -2,7 +2,7 @@
 
 AI-powered travel hacking with points, miles, and award flights. Drop-in skills and MCP servers for [OpenCode](https://opencode.ai) and [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
-Ask your AI to find you a 60,000-mile business class flight to Tokyo. It'll search award availability across 25+ programs, compare against cash prices, check your loyalty balances, and tell you the best play.
+Ask your AI to find you a cheap business class flight to Tokyo. It'll search cash prices across multiple sources, compare against award options, and tell you the best play.
 
 ## Quick Start
 
@@ -16,9 +16,8 @@ The setup script walks you through everything: picks your tool (OpenCode, Claude
 
 The 5 free MCP servers (Skiplagged, Kiwi, Trivago, Ferryhopper, Airbnb) work immediately with zero API keys. For the full experience, add at minimum:
 
-| Key | Why | Free Tier |
-|-----|-----|-----------|
-| `SEATS_AERO_API_KEY` | Award flight search. The main event. | No (Pro ~$8/mo) |
+| Key               | Why                                                   | Free Tier             |
+| ----------------- | ----------------------------------------------------- | --------------------- |
 | `SERPAPI_API_KEY` | Cash price comparison for "points or cash?" decisions | Yes (100 searches/mo) |
 
 Then launch your tool:
@@ -37,27 +36,24 @@ The `--strict-mcp-config` flag tells Claude Code to load MCP servers from the co
 
 ### MCP Servers (real-time tools)
 
-| Server | What It Does | API Key |
-|--------|-------------|---------|
-| [Skiplagged](https://skiplagged.com) | Flight search with hidden city fares | None (free) |
-| [Kiwi.com](https://www.kiwi.com) | Flights with virtual interlining (creative cross-airline routing) | None (free) |
-| [Trivago](https://mcp.trivago.com/docs) | Hotel metasearch across booking sites | None (free) |
-| [Ferryhopper](https://ferryhopper.github.io/fh-mcp/) | Ferry routes across 33 countries, 190+ operators | None (free) |
-| [Airbnb](https://github.com/borski/mcp-server-airbnb) | Search Airbnb listings, property details, pricing. Patched with geocoding fix and property type filter. | None (free) |
-| [LiteAPI](https://mcp.liteapi.travel) | Hotel search with live rates and booking | [LiteAPI](https://liteapi.travel) |
+| Server                                                | What It Does                                                                                            | API Key                           |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| [Skiplagged](https://skiplagged.com)                  | Flight search with hidden city fares                                                                    | None (free)                       |
+| [Kiwi.com](https://www.kiwi.com)                      | Flights with virtual interlining (creative cross-airline routing)                                       | None (free)                       |
+| [Trivago](https://mcp.trivago.com/docs)               | Hotel metasearch across booking sites                                                                   | None (free)                       |
+| [Ferryhopper](https://ferryhopper.github.io/fh-mcp/)  | Ferry routes across 33 countries, 190+ operators                                                        | None (free)                       |
+| [Airbnb](https://github.com/borski/mcp-server-airbnb) | Search Airbnb listings, property details, pricing. Patched with geocoding fix and property type filter. | None (free)                       |
+| [LiteAPI](https://mcp.liteapi.travel)                 | Hotel search with live rates and booking                                                                | [LiteAPI](https://liteapi.travel) |
 
 ### Skills (API knowledge for your AI)
 
-| Skill | What It Does | API Key |
-|-------|-------------|---------|
-| **duffel** | Real-time flight search across airlines via Duffel API | [Duffel](https://duffel.com) |
-| **seats-aero** | Award flight availability across 25+ mileage programs | [Seats.aero](https://seats.aero) Pro/Partner |
-| **awardwallet** | Loyalty program balances, elite status, history | [AwardWallet](https://business.awardwallet.com) Business |
-| **serpapi** | Google Flights cash prices, hotels, destination discovery | [SerpAPI](https://serpapi.com) |
-| **rapidapi** | Secondary prices via Google Flights Live + Booking.com | [RapidAPI](https://rapidapi.com) |
-| **atlas-obscura** | Hidden gems near any destination | None (free) |
-| **scandinavia-transit** | Trains, buses, ferries in Norway/Sweden/Denmark | [Entur](https://developer.entur.org) + [Trafiklab](https://www.trafiklab.se) |
-| **wheretocredit** | Mileage earning rates by airline and booking class across 50+ FF programs | None (free) |
+| Skill                   | What It Does                                              | API Key                                                                      |
+| ----------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **duffel**              | Real-time flight search across airlines via Duffel API    | [Duffel](https://duffel.com)                                                 |
+| **serpapi**             | Google Flights cash prices, hotels, destination discovery | [SerpAPI](https://serpapi.com)                                               |
+| **rapidapi**            | Secondary prices via Google Flights Live + Booking.com    | [RapidAPI](https://rapidapi.com)                                             |
+| **atlas-obscura**       | Hidden gems near any destination                          | None (free)                                                                  |
+| **scandinavia-transit** | Trains, buses, ferries in Norway/Sweden/Denmark           | [Entur](https://developer.entur.org) + [Trafiklab](https://www.trafiklab.se) |
 
 ## How It Works
 
@@ -66,12 +62,14 @@ The `--strict-mcp-config` flag tells Claude Code to load MCP servers from the co
 Skills are markdown files that teach your AI how to call travel APIs. They contain endpoint documentation, curl examples, useful jq filters, and workflow guidance. Both OpenCode and Claude Code support skills natively.
 
 The `skills/` directory is the canonical source. The setup script either:
+
 - Copies them to your tool's global skills directory (`~/.config/opencode/skills/` or `~/.claude/skills/`)
 - Or creates project-level symlinks so they load when you work from this directory
 
 ### MCP Servers
 
 MCP (Model Context Protocol) servers give your AI real-time tools it can call directly. The configs are in:
+
 - `opencode.json` for OpenCode
 - `.mcp.json` for Claude Code
 
@@ -81,19 +79,18 @@ Skiplagged, Kiwi.com, Trivago, Ferryhopper, and Airbnb need no setup at all. Lit
 
 The core question: **"Should I burn points or pay cash?"**
 
-1. **Search award availability** — Seats.aero across 25+ programs
-2. **Search cash prices** — SerpAPI (Google Flights) or Skiplagged
+1. **Search cash prices** — google-flights, Ignav, SerpAPI, Duffel, Skiplagged
+2. **Check award pricing** — airline/program websites for award availability
 3. **Estimate portal value** — Portal rates are dynamic now. Chase "Points Boost" (June 2025) offers 1.5 to 2.0cpp on select bookings, not a flat rate. Amex/Capital One ~1.0cpp. Check the actual portal for your specific booking.
 4. **Compare** — Lower number wins
-5. **Check balances** — AwardWallet confirms you have enough
-6. **Book it** — Use booking links from Seats.aero or Duffel
+5. **Check balances** — Ask or reference previously shared balances
+6. **Book it** — Use booking links from search tools or airline websites
 
 ### Example Prompts
 
 ```
 "Find me the cheapest business class award from SFO to Tokyo in August"
 "Compare points vs cash for a round trip JFK to London next March"
-"What are my United miles and Chase UR balances?"
 "Find hidden gems near Lisbon"
 "How do I get from Oslo to Bergen by train?"
 ```
@@ -121,8 +118,6 @@ travel-hacking-toolkit/
 │   └── transfer-partners.json      # Credit card transfer partners + ratios
 ├── skills/
 │   ├── duffel/SKILL.md             # Real-time flight search
-│   ├── seats-aero/SKILL.md         # Award flight search
-│   ├── awardwallet/SKILL.md        # Loyalty balances
 │   ├── serpapi/SKILL.md            # Cash prices + hotels
 │   ├── rapidapi/SKILL.md           # Secondary price source
 │   ├── atlas-obscura/              # Hidden gems (+ Node.js scraper)
@@ -140,8 +135,6 @@ travel-hacking-toolkit/
 
 Built on these excellent projects:
 
-- [Seats.aero](https://seats.aero) — Award flight availability data
-- [AwardWallet](https://awardwallet.com) — Loyalty program tracking
 - [Duffel](https://duffel.com) — Real-time flight search and booking
 - [SerpAPI](https://serpapi.com) — Google search result APIs
 - [RapidAPI](https://rapidapi.com) — API marketplace

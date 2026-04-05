@@ -9,6 +9,7 @@ license: MIT
 Search Google Flights and Booking.com via RapidAPI scrapers. Secondary source for cash flight prices and hotel/vacation rental pricing.
 
 **Sources:**
+
 - [Google Flights Live API on RapidAPI](https://rapidapi.com/apiheya/api/google-flights-live-api)
 - [Booking.com Live API on RapidAPI](https://rapidapi.com/apiheya/api/booking-live-api)
 
@@ -57,17 +58,17 @@ curl -s -X POST "https://google-flights-live-api.p.rapidapi.com/api/v1/searchFli
 
 ### Parameters
 
-| Param | Required | Description |
-|-------|----------|-------------|
-| `origin` | Yes | Airport IATA code |
-| `destination` | Yes | Airport IATA code |
-| `date` | Yes | `YYYY-MM-DD` departure |
-| `returnDate` | No | `YYYY-MM-DD` for round trip |
-| `adults` | No | Default 1 |
-| `children` | No | Default 0 |
-| `infants` | No | Default 0 |
-| `cabinClass` | No | `economy`, `premium_economy`, `business`, `first` |
-| `currency` | No | Default `USD` |
+| Param         | Required | Description                                       |
+| ------------- | -------- | ------------------------------------------------- |
+| `origin`      | Yes      | Airport IATA code                                 |
+| `destination` | Yes      | Airport IATA code                                 |
+| `date`        | Yes      | `YYYY-MM-DD` departure                            |
+| `returnDate`  | No       | `YYYY-MM-DD` for round trip                       |
+| `adults`      | No       | Default 1                                         |
+| `children`    | No       | Default 0                                         |
+| `infants`     | No       | Default 0                                         |
+| `cabinClass`  | No       | `economy`, `premium_economy`, `business`, `first` |
+| `currency`    | No       | Default `USD`                                     |
 
 ## Booking.com Live API
 
@@ -83,19 +84,19 @@ curl -s "https://booking-live-api.p.rapidapi.com/api/v1/searchHotels?location=To
 
 ### Parameters
 
-| Param | Required | Description |
-|-------|----------|-------------|
-| `location` | Yes | City/area name: `Tokyo, Japan` |
-| `checkin` | Yes | `YYYY-MM-DD` |
-| `checkout` | Yes | `YYYY-MM-DD` |
-| `adults` | No | Default 2 |
-| `children` | No | Default 0 |
-| `rooms` | No | Default 1 |
-| `currency` | No | Default `USD` |
-| `sortBy` | No | `price`, `rating`, `popularity` |
-| `minPrice` | No | Minimum price filter |
-| `maxPrice` | No | Maximum price filter |
-| `starRating` | No | `3,4,5` comma-separated |
+| Param        | Required | Description                     |
+| ------------ | -------- | ------------------------------- |
+| `location`   | Yes      | City/area name: `Tokyo, Japan`  |
+| `checkin`    | Yes      | `YYYY-MM-DD`                    |
+| `checkout`   | Yes      | `YYYY-MM-DD`                    |
+| `adults`     | No       | Default 2                       |
+| `children`   | No       | Default 0                       |
+| `rooms`      | No       | Default 1                       |
+| `currency`   | No       | Default `USD`                   |
+| `sortBy`     | No       | `price`, `rating`, `popularity` |
+| `minPrice`   | No       | Minimum price filter            |
+| `maxPrice`   | No       | Maximum price filter            |
+| `starRating` | No       | `3,4,5` comma-separated         |
 
 ### Get Hotel Details
 
@@ -116,5 +117,6 @@ Use sparingly. Prefer SerpAPI for flights and LiteAPI/SerpAPI for hotels as prim
 - **Booking.com Live**: When you want Booking.com specific pricing/availability (different inventory than Google Hotels).
 
 Do not:
-- Use as primary search (SerpAPI and Seats.aero are primary).
+
+- Use as primary search (SerpAPI, google-flights, and Ignav are primary).
 - Burn through free tier on broad searches. Be targeted.

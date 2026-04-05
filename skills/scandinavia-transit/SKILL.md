@@ -9,6 +9,7 @@ license: MIT
 Search ground transport (trains, buses, ferries) within Norway, Sweden, and Denmark using their national transit APIs.
 
 **Sources:**
+
 - [Entur (Norway)](https://developer.entur.org) — Open GraphQL API for all Norwegian transit
 - [ResRobot (Sweden)](https://www.trafiklab.se/api/trafiklab-apis/resrobot-v21/) — REST API via Trafiklab for all Swedish transit
 - [Rejseplanen (Denmark)](https://labs.rejseplanen.dk) — Danish transit (pending API access)
@@ -37,13 +38,13 @@ curl -s "https://api.entur.io/geocoder/v1/autocomplete?text=Oslo%20S&size=3" \
 
 ### Key Stop IDs
 
-| City | Stop ID | Name |
-|------|---------|------|
-| Oslo S | NSR:StopPlace:59872 | Oslo S |
-| Bergen | NSR:StopPlace:548 | Bergen stasjon |
-| Stavanger | NSR:StopPlace:4130 | Stavanger |
-| Trondheim | NSR:StopPlace:41742 | Trondheim S |
-| Bodo | NSR:StopPlace:49484 | Bodo stasjon |
+| City      | Stop ID             | Name           |
+| --------- | ------------------- | -------------- |
+| Oslo S    | NSR:StopPlace:59872 | Oslo S         |
+| Bergen    | NSR:StopPlace:548   | Bergen stasjon |
+| Stavanger | NSR:StopPlace:4130  | Stavanger      |
+| Trondheim | NSR:StopPlace:41742 | Trondheim S    |
+| Bodo      | NSR:StopPlace:49484 | Bodo stasjon   |
 
 Use the Geocoder to find any stop. Works for airports, ferry terminals, bus stops too.
 
@@ -57,6 +58,7 @@ curl -s -X POST "https://api.entur.io/journey-planner/v3/graphql" \
 ```
 
 ### Notes
+
 - GraphQL API. POST only. One endpoint: `https://api.entur.io/journey-planner/v3/graphql`
 - Set `ET-Client-Name` header on all requests. Entur asks you to use a descriptive name like `yourname-tripplanner`.
 - No rate limit key, but respectful usage expected. Don't hammer it.
@@ -87,27 +89,28 @@ curl -s "https://api.resrobot.se/v2.1/location.name?input=Stockholm&format=json&
 
 ### Key Stop IDs
 
-| City | Stop ID | Name |
-|------|---------|------|
-| Stockholm C | 740000001 | Stockholm Centralstation |
-| Gothenburg C | 740000002 | Goteborg Centralstation |
-| Malmo C | 740000003 | Malmo Centralstation |
-| Uppsala | 740000025 | Uppsala Centralstation |
-| Linkoping | 740000009 | Linkoping Centralstation |
+| City         | Stop ID   | Name                     |
+| ------------ | --------- | ------------------------ |
+| Stockholm C  | 740000001 | Stockholm Centralstation |
+| Gothenburg C | 740000002 | Goteborg Centralstation  |
+| Malmo C      | 740000003 | Malmo Centralstation     |
+| Uppsala      | 740000025 | Uppsala Centralstation   |
+| Linkoping    | 740000009 | Linkoping Centralstation |
 
 ### Parameters
 
-| Param | Required | Description |
-|-------|----------|-------------|
-| `originId` | Yes | Departure stop ID |
-| `destId` | Yes | Arrival stop ID |
-| `date` | No | YYYY-MM-DD (default today) |
-| `time` | No | HH:MM (default now) |
-| `format` | No | `json` or `xml` |
-| `numTrips` | No | Number of results (default 5) |
-| `products` | No | Bitmask for transport types |
+| Param      | Required | Description                   |
+| ---------- | -------- | ----------------------------- |
+| `originId` | Yes      | Departure stop ID             |
+| `destId`   | Yes      | Arrival stop ID               |
+| `date`     | No       | YYYY-MM-DD (default today)    |
+| `time`     | No       | HH:MM (default now)           |
+| `format`   | No       | `json` or `xml`               |
+| `numTrips` | No       | Number of results (default 5) |
+| `products` | No       | Bitmask for transport types   |
 
 ### Notes
+
 - REST API. Base: `https://api.resrobot.se/v2.1/`
 - 30,000 calls/month on free tier. Plenty for trip planning.
 - Includes cross-border Oresund trains to Copenhagen.
@@ -123,22 +126,24 @@ Until approved, use SerpAPI Google Flights for Copenhagen connections, or Entur/
 
 ## Cross-Border Routes
 
-| Route | Covered By | Notes |
-|-------|------------|-------|
-| Oslo-Stockholm | Entur + ResRobot | SJ trains, ~6 hours |
-| Malmo-Copenhagen | ResRobot | Oresund trains, 35 min |
-| Gothenburg-Oslo | Entur + ResRobot | Vy/SJ, ~4 hours |
-| Stockholm-Copenhagen | ResRobot | SJ/DSB, ~5 hours via Malmo |
+| Route                | Covered By       | Notes                      |
+| -------------------- | ---------------- | -------------------------- |
+| Oslo-Stockholm       | Entur + ResRobot | SJ trains, ~6 hours        |
+| Malmo-Copenhagen     | ResRobot         | Oresund trains, 35 min     |
+| Gothenburg-Oslo      | Entur + ResRobot | Vy/SJ, ~4 hours            |
+| Stockholm-Copenhagen | ResRobot         | SJ/DSB, ~5 hours via Malmo |
 
 ## When to Use
 
 Load this skill when:
+
 - Planning train/bus/ferry routes between Scandinavian cities
 - Checking schedules and durations for ground transport
 - Finding stop IDs for trip planning
 - Comparing train vs flight for intra-Scandinavia legs
 
 Do not:
+
 - Use for booking (these APIs are search/schedule only)
-- Use for flights (use Seats.aero, SerpAPI, or Duffel instead)
+- Use for flights (use SerpAPI, Duffel, or other flight search tools instead)
 - Expect pricing from Entur or ResRobot (schedule data only, except Rejseplanen when approved)

@@ -56,7 +56,6 @@ setup_api_keys() {
   echo ""
   echo "  The 5 free MCP servers work without any keys."
   echo "  For the full experience, add at minimum:"
-  echo "    SEATS_AERO_API_KEY    Award flight search (the main event)"
   echo "    SERPAPI_API_KEY        Cash price comparison"
   echo ""
 }
