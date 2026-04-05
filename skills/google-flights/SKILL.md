@@ -98,20 +98,20 @@ agent-browser --session flights snapshot -i
 
 ### What Works via URL
 
-| Feature | URL syntax | Status |
-|---------|-----------|--------|
-| Round trip | `+returning+YYYY-MM-DD` | Works |
-| One way | `+one+way` | Works |
-| Business class | `+business+class` | Works |
-| First class | `+first+class` | Works |
-| N passengers (adults) | `+N+passengers` | Works |
-| Adults + children | `+2+adults+1+child` | Works |
-| IATA codes | `BKK`, `NRT`, `LAX` | Works |
-| City names | `Bangkok`, `Tokyo` | Works |
-| Dates as YYYY-MM-DD | `2026-03-20` | Works (best) |
-| Natural dates | `March+20` | Works |
-| **Premium economy** | `+premium+economy` | **Fails** |
-| **Multi-city** | N/A | **Fails** |
+| Feature               | URL syntax              | Status       |
+| --------------------- | ----------------------- | ------------ |
+| Round trip            | `+returning+YYYY-MM-DD` | Works        |
+| One way               | `+one+way`              | Works        |
+| Business class        | `+business+class`       | Works        |
+| First class           | `+first+class`          | Works        |
+| N passengers (adults) | `+N+passengers`         | Works        |
+| Adults + children     | `+2+adults+1+child`     | Works        |
+| IATA codes            | `BKK`, `NRT`, `LAX`     | Works        |
+| City names            | `Bangkok`, `Tokyo`      | Works        |
+| Dates as YYYY-MM-DD   | `2026-03-20`            | Works (best) |
+| Natural dates         | `March+20`              | Works        |
+| **Premium economy**   | `+premium+economy`      | **Fails**    |
+| **Multi-city**        | N/A                     | **Fails**    |
 
 ### What Requires Interactive Fallback
 
@@ -131,25 +131,14 @@ link "From 20508 Thai baht round trip total. Nonstop flight with Air Japan.
      Total duration 6 hr 5 min. Select flight"
 ```
 
-Parse economy + business snapshots into the **compact list format**:
+Parse economy + business snapshots into a **markdown table**:
 
-```
-1. JAL — Nonstop · 5h 55m
-   8:05 AM → 4:00 PM
-   Economy: THB 23,255 · Business: THB 65,915 (+183%)
-
-2. THAI — Nonstop · 5h 50m
-   10:30 PM → 6:20 AM+1
-   Economy: THB 28,165 · Business: THB 75,000 (+166%)
-
-3. Air Japan — Nonstop · 6h 05m
-   12:10 AM → 8:15 AM
-   Economy: THB 20,515 · Business: —
-
-4. ZIPAIR — Nonstop · 5h 45m
-   11:45 PM → 7:30 AM+1
-   Economy: THB 21,425 · Business: —
-```
+| #   | Airline   | Stops   | Duration | Depart   | Arrive    | Economy    | Business   | Δ     |
+| --- | --------- | ------- | -------- | -------- | --------- | ---------- | ---------- | ----- |
+| 1   | JAL       | Nonstop | 5h 55m   | 8:05 AM  | 4:00 PM   | THB 23,255 | THB 65,915 | +183% |
+| 2   | THAI      | Nonstop | 5h 50m   | 10:30 PM | 6:20 AM+1 | THB 28,165 | THB 75,000 | +166% |
+| 3   | Air Japan | Nonstop | 6h 05m   | 12:10 AM | 8:15 AM   | THB 20,515 | —          | —     |
+| 4   | ZIPAIR    | Nonstop | 5h 45m   | 11:45 PM | 7:30 AM+1 | THB 21,425 | —          | —     |
 
 **Matching**: Pair economy and business results by airline + departure time. Budget carriers without business class show "—". Include "Best"/"Cheapest" labels from Google when present.
 
@@ -222,6 +211,7 @@ agent-browser --session flights snapshot -i
 ### Set Cabin Class / Passengers (if non-default)
 
 **Cabin class:**
+
 ```bash
 agent-browser --session flights click @eN   # Cabin class combobox
 agent-browser --session flights snapshot -i
@@ -231,6 +221,7 @@ agent-browser --session flights snapshot -i
 ```
 
 **Passengers:**
+
 ```bash
 agent-browser --session flights click @eN   # Passengers button
 agent-browser --session flights snapshot -i
@@ -296,55 +287,47 @@ Fill each leg's destination + date in order, then click "Search".
 
 ## Output Format
 
-**Always use compact list format** — never markdown tables. Output is typically displayed in chatbot interfaces (Telegram, etc.) where tables render poorly.
+**Always use markdown tables** for flight results. Tables make it easy to scan and compare options at a glance.
 
 ### Economy + Business comparison (default)
 
 ```
-1. JAL — Nonstop · 5h 55m
-   8:05 AM → 4:00 PM
-   Economy: THB 23,255 · Business: THB 65,915 (+183%)
-
-2. THAI — Nonstop · 5h 50m
-   10:30 PM → 6:20 AM+1
-   Economy: THB 28,165 · Business: THB 75,000 (+166%)
-
-3. Air Japan — Nonstop · 6h 05m
-   12:10 AM → 8:15 AM
-   Economy: THB 20,515 · Business: —
+| # | Airline | Stops | Duration | Depart | Arrive | Economy | Business | Δ |
+|---|---------|-------|----------|--------|--------|---------|----------|---|
+| 1 | JAL | Nonstop | 5h 55m | 8:05 AM | 4:00 PM | THB 23,255 | THB 65,915 | +183% |
+| 2 | THAI | Nonstop | 5h 50m | 10:30 PM | 6:20 AM+1 | THB 28,165 | THB 75,000 | +166% |
+| 3 | Air Japan | Nonstop | 6h 05m | 12:10 AM | 8:15 AM | THB 20,515 | — | — |
 ```
 
 ### Economy only
 
 ```
-1. JAL — Nonstop · 5h 55m
-   8:05 AM → 4:00 PM · THB 23,255
-
-2. THAI — Nonstop · 5h 50m
-   10:30 PM → 6:20 AM+1 · THB 28,165
+| # | Airline | Stops | Duration | Depart | Arrive | Price |
+|---|---------|-------|----------|--------|--------|-------|
+| 1 | JAL | Nonstop | 5h 55m | 8:05 AM | 4:00 PM | THB 23,255 |
+| 2 | THAI | Nonstop | 5h 50m | 10:30 PM | 6:20 AM+1 | THB 28,165 |
 ```
 
 ### Format rules
 
-- One flight per numbered block, blank line between flights
-- Line 1: Airline — Stops · Duration
-- Line 2: Departure → Arrival times
-- Line 3: Prices (economy, business delta if applicable)
-- No code blocks around the flight list — plain text reads best
-- Keep the "Best value" recommendation as a plain text paragraph after the list
+- Use markdown table with one row per flight
+- Columns: #, Airline, Stops, Duration, Depart, Arrive, and price columns (Economy/Business/Δ or just Price)
+- For connections, show stop cities in the Stops column (e.g., "1 stop · ICN")
+- No code blocks around the table — render as actual markdown
+- Keep the "Best value" recommendation as a plain text paragraph after the table
 
 ## Key Rules
 
-| Rule | Why |
-|------|-----|
-| Prefer URL fast path | 3 commands vs 15+ interactive |
-| `wait --load networkidle` | Smarter than fixed `wait 5000` — returns when network settles |
-| Use `fill` not `type` for airports | Clears existing text first |
-| Wait 2s after typing airport codes | Autocomplete needs API roundtrip |
-| Always CLICK suggestions, never Enter | Enter is unreliable for autocomplete |
-| Re-snapshot after every interaction | DOM changes invalidate refs |
-| "Done" ≠ Search | Calendar Done only closes picker |
-| After presenting results, offer booking links | Users almost always want to book — prompt them |
+| Rule                                                  | Why                                                           |
+| ----------------------------------------------------- | ------------------------------------------------------------- |
+| Prefer URL fast path                                  | 3 commands vs 15+ interactive                                 |
+| `wait --load networkidle`                             | Smarter than fixed `wait 5000` — returns when network settles |
+| Use `fill` not `type` for airports                    | Clears existing text first                                    |
+| Wait 2s after typing airport codes                    | Autocomplete needs API roundtrip                              |
+| Always CLICK suggestions, never Enter                 | Enter is unreliable for autocomplete                          |
+| Re-snapshot after every interaction                   | DOM changes invalidate refs                                   |
+| "Done" ≠ Search                                       | Calendar Done only closes picker                              |
+| After presenting results, offer booking links         | Users almost always want to book — prompt them                |
 | Keep results session alive; close `biz` after results | Results session needed for booking clicks; biz only for delta |
 
 ## Troubleshooting
@@ -360,6 +343,7 @@ Fill each leg's destination + date in order, then click "Search".
 ## Deep-Dive Reference
 
 See [references/interaction-patterns.md](references/interaction-patterns.md) for:
+
 - Full annotated walkthrough (every command + expected output)
 - Airport autocomplete failure modes and recovery
 - Date picker calendar navigation

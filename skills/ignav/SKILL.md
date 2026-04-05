@@ -128,15 +128,36 @@ A leg with multiple segments means there's a connection. The layover time is the
 
 ## Presenting Results
 
-Organize results so the user can make a quick, informed decision:
+**Always use markdown tables** for flight results. Tables make it easy to scan and compare options at a glance.
 
-1. **Summary table** with the top options — price, airline, departure/arrival times, duration, stops
-2. **Highlight** the cheapest, fastest, and best-value options
-3. **Call out tradeoffs** — e.g., "40€ cheaper but adds a 4-hour layover in Rome"
-4. **Include baggage info** when it differs between options (some may not include checked bags)
-5. **Offer booking links** — ask if they want booking links for any specific flight
+### One-way or single cabin
 
-For multi-segment flights, show the connection details: layover airport, layover duration, and whether it's a carrier change.
+| #   | Airline | Stops        | Duration | Depart   | Arrive   | Price | Bags                  |
+| --- | ------- | ------------ | -------- | -------- | -------- | ----- | --------------------- |
+| 1   | Vueling | Nonstop      | 2h 15m   | 8:30 AM  | 10:45 AM | €125  | 1 carry-on            |
+| 2   | Ryanair | Nonstop      | 2h 20m   | 6:15 AM  | 8:35 AM  | €89   | 1 carry-on            |
+| 3   | BA      | 1 stop · MAD | 5h 40m   | 11:00 AM | 4:40 PM  | €210  | 1 carry-on, 1 checked |
+
+### Round-trip
+
+| #   | Airline | Stops        | Duration | Outbound           | Return            | Price | Bags                  |
+| --- | ------- | ------------ | -------- | ------------------ | ----------------- | ----- | --------------------- |
+| 1   | Vueling | Nonstop      | 2h 15m   | 8:30 AM → 10:45 AM | 6:00 PM → 8:10 PM | €245  | 1 carry-on            |
+| 2   | BA      | 1 stop · MAD | 5h 40m   | 11:00 AM → 4:40 PM | 3:15 PM → 8:50 PM | €398  | 1 carry-on, 1 checked |
+
+### Format rules
+
+- Use markdown table with one row per itinerary
+- Columns: #, Airline, Stops, Duration, time columns, Price, Bags
+- For connections, show stop cities in the Stops column (e.g., "1 stop · MAD")
+- Include Bags column when baggage allowances differ between options; omit if all are identical
+- No code blocks around the table — render as actual markdown
+
+### After the table
+
+- **Highlight** the cheapest, fastest, and best-value options
+- **Call out tradeoffs** — e.g., "40€ cheaper but adds a 4-hour layover in Rome"
+- **Offer booking links** — ask if they want booking links for any specific flight
 
 ## Tips
 
