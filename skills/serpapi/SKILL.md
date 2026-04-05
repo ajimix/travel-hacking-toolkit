@@ -1,12 +1,12 @@
 ---
 name: serpapi
-description: Search Google Flights for cash prices, Google Hotels for accommodation, and Google Travel Explore for destination discovery. Use when comparing award flights vs pay-with-points portal pricing, searching hotels, or exploring travel options. Triggers on "cash price", "how much does the flight cost", "hotel search", "Google Flights", "Chase portal comparison", "pay with points portal", "cheapest flight", "flight schedule", or any question about actual dollar prices for flights or hotels.
+description: Search Google Flights for cash prices, Google Hotels for accommodation, and Google Travel Explore for destination discovery. Use when searching flights, hotels, or exploring travel options. Triggers on "cash price", "how much does the flight cost", "hotel search", "Google Flights", "cheapest flight", "flight schedule", or any question about actual dollar prices for flights or hotels.
 license: MIT
 ---
 
 # SerpAPI Skill
 
-Scrape Google Flights, Google Hotels, and Google Travel Explore via SerpAPI. Provides cash flight prices (for Chase/Amex portal comparison), hotel pricing, and destination discovery.
+Scrape Google Flights, Google Hotels, and Google Travel Explore via SerpAPI. Provides cash flight prices, hotel pricing, and destination discovery.
 
 **Source:** [serpapi.com](https://serpapi.com) — Free tier available, paid plans for higher volume.
 
@@ -22,7 +22,7 @@ https://serpapi.com/search
 
 ## Google Flights (Cash Prices)
 
-Search for flight prices and schedules. Essential for comparing: "Is 88,000 United miles better than paying $900 cash through the Chase portal at 1.5 cpp?"
+Search for flight prices and schedules across airlines and routes.
 
 ### One-Way Search
 
@@ -85,16 +85,6 @@ Each flight in `best_flights[]` and `other_flights[]`:
 
 `price_insights` includes `lowest_price`, `price_level` (low/typical/high), and `typical_price_range`.
 
-### Portal Comparison Math
-
-Chase Sapphire Reserve: 1.5 cpp via portal.
-If cash price is $900, portal cost = 60,000 UR points.
-If award price is 88,000 United miles, cash via portal is better value.
-
-Amex: typically 1 cpp via portal (worse value, use transfers instead).
-
-Capital One Venture X: 1 cpp via portal, but transfer partners can be better.
-
 ## Google Hotels
 
 Search hotels and vacation rentals with pricing from multiple OTAs.
@@ -144,13 +134,6 @@ curl -s "https://serpapi.com/search?engine=google_travel_explore&departure_id=SF
 | `include_airlines` | No       | Filter by airline or alliance                    |
 | `max_price`        | No       | Maximum price                                    |
 | `stops`            | No       | Same as Google Flights                           |
-
-## Workflow: Compare Award vs Cash
-
-1. Search cash prices on Google Flights via SerpAPI
-2. Estimate portal cost. Chase uses dynamic "Points Boost" pricing (1.5 to 2.0cpp on select bookings, not a flat rate). Amex/Capital One ~1.0cpp. For rough math use 1.5cpp Chase, 1.0cpp others, but always recommend checking the actual portal price.
-3. Compare with award price from the airline/program website
-4. Lower number wins (accounting for the value you place on each currency)
 
 ## Notes
 

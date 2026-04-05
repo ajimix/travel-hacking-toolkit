@@ -1,8 +1,8 @@
 # Travel Hacking Toolkit
 
-AI-powered travel hacking with points, miles, and award flights. Drop-in skills and MCP servers for [OpenCode](https://opencode.ai) and [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+AI-powered travel hacking — find the cheapest flights and hotels across every source. Drop-in skills and MCP servers for [OpenCode](https://opencode.ai) and [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
-Ask your AI to find you a cheap business class flight to Tokyo. It'll search cash prices across multiple sources, compare against award options, and tell you the best play.
+Ask your AI to find you a cheap business class flight to Tokyo. It'll search cash prices across multiple sources, compare routings, and tell you the cheapest way to book.
 
 ## Quick Start
 
@@ -16,9 +16,9 @@ The setup script walks you through everything: picks your tool (OpenCode, Claude
 
 The 5 free MCP servers (Skiplagged, Kiwi, Trivago, Ferryhopper, Airbnb) work immediately with zero API keys. For the full experience, add at minimum:
 
-| Key               | Why                                                   | Free Tier             |
-| ----------------- | ----------------------------------------------------- | --------------------- |
-| `SERPAPI_API_KEY` | Cash price comparison for "points or cash?" decisions | Yes (100 searches/mo) |
+| Key               | Why                     | Free Tier             |
+| ----------------- | ----------------------- | --------------------- |
+| `SERPAPI_API_KEY` | Flight and hotel search | Yes (100 searches/mo) |
 
 Then launch your tool:
 
@@ -77,20 +77,17 @@ Skiplagged, Kiwi.com, Trivago, Ferryhopper, and Airbnb need no setup at all. Lit
 
 ## The Travel Hacking Workflow
 
-The core question: **"Should I burn points or pay cash?"**
-
-1. **Search cash prices** — google-flights, Ignav, SerpAPI, Duffel, Skiplagged
-2. **Check award pricing** — airline/program websites for award availability
-3. **Estimate portal value** — Portal rates are dynamic now. Chase "Points Boost" (June 2025) offers 1.5 to 2.0cpp on select bookings, not a flat rate. Amex/Capital One ~1.0cpp. Check the actual portal for your specific booking.
-4. **Compare** — Lower number wins
-5. **Check balances** — Ask or reference previously shared balances
-6. **Book it** — Use booking links from search tools or airline websites
+1. **Search cash prices** across sources — google-flights, Ignav, SerpAPI, Duffel, Skiplagged, Kiwi
+2. **Compare prices and routings** — different sources return different fares for the same flight
+3. **Exploit market arbitrage** — searching from a different country's market can unlock cheaper fares
+4. **Try creative routings** — hidden city fares (Skiplagged), virtual interlining (Kiwi), open jaw
+5. **Book the cheapest option** — use booking links from search results or book direct with the airline
 
 ### Example Prompts
 
 ```
-"Find me the cheapest business class award from SFO to Tokyo in August"
-"Compare points vs cash for a round trip JFK to London next March"
+"Find me the cheapest business class flight from SFO to Tokyo in August"
+"Search hotels in Lisbon under $150/night for next March"
 "Find hidden gems near Lisbon"
 "How do I get from Oslo to Bergen by train?"
 ```
@@ -109,15 +106,10 @@ travel-hacking-toolkit/
 │   └── skills -> ../skills         # Symlink to skills
 ├── .opencode/
 │   └── skills -> ../skills         # Symlink to skills
-├── data/
-│   ├── alliances.json              # Airline alliance membership + booking relationships
-│   ├── hotel-chains.json           # Hotel chains, sub-brands, loyalty programs, reverse lookup
-│   ├── partner-awards.json         # Which programs book which airlines (alliance + bilateral)
-│   ├── points-valuations.json      # Points/miles valuations from 4 sources (floor/ceiling)
-│   ├── sweet-spots.json            # High-value award redemptions + booking windows
-│   └── transfer-partners.json      # Credit card transfer partners + ratios
 ├── skills/
 │   ├── duffel/SKILL.md             # Real-time flight search
+│   ├── google-flights/SKILL.md     # Browser-automated Google Flights
+│   ├── ignav/SKILL.md              # Fast flight search API
 │   ├── serpapi/SKILL.md            # Cash prices + hotels
 │   ├── rapidapi/SKILL.md           # Secondary price source
 │   ├── atlas-obscura/              # Hidden gems (+ Node.js scraper)
