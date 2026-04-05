@@ -32,25 +32,26 @@ curl -s "https://serpapi.com/search?engine=google_flights&departure_id=SFO&arriv
 
 ### Parameters
 
-| Param | Required | Description |
-|-------|----------|-------------|
-| `engine` | Yes | `google_flights` |
-| `departure_id` | Yes | Airport code(s), comma-separated: `SFO,PDX` |
-| `arrival_id` | Yes | Airport code(s), comma-separated: `NRT,HND` |
-| `outbound_date` | Yes | `YYYY-MM-DD` |
-| `return_date` | Round trip | `YYYY-MM-DD` (required if type=1) |
-| `type` | No | `1` = round trip (default), `2` = one way, `3` = multi-city |
-| `adults` | No | Default 1 |
-| `children` | No | Default 0 |
-| `travel_class` | No | `1` = economy, `2` = premium economy, `3` = business, `4` = first |
-| `stops` | No | `0` = any, `1` = nonstop, `2` = 1 stop or fewer, `3` = 2 stops or fewer |
-| `sort_by` | No | `1` = top flights, `2` = price, `3` = departure, `4` = arrival, `5` = duration |
-| `include_airlines` | No | IATA codes: `SK,KL,UA` or alliances: `STAR_ALLIANCE,SKYTEAM,ONEWORLD` |
-| `max_price` | No | Maximum ticket price in USD |
-| `max_duration` | No | Maximum flight duration in minutes |
-| `bags` | No | Number of carry-on bags |
-| `deep_search` | No | `true` for browser-identical results (slower) |
-| `currency` | No | Default `USD` |
+| Param              | Required   | Description                                                                                                                                                                        |
+| ------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `engine`           | Yes        | `google_flights`                                                                                                                                                                   |
+| `departure_id`     | Yes        | Airport code(s), comma-separated: `SFO,PDX`                                                                                                                                        |
+| `arrival_id`       | Yes        | Airport code(s), comma-separated: `NRT,HND`                                                                                                                                        |
+| `outbound_date`    | Yes        | `YYYY-MM-DD`                                                                                                                                                                       |
+| `return_date`      | Round trip | `YYYY-MM-DD` (required if type=1)                                                                                                                                                  |
+| `type`             | No         | `1` = round trip (default), `2` = one way, `3` = multi-city                                                                                                                        |
+| `adults`           | No         | Default 1                                                                                                                                                                          |
+| `children`         | No         | Default 0                                                                                                                                                                          |
+| `travel_class`     | No         | `1` = economy, `2` = premium economy, `3` = business, `4` = first                                                                                                                  |
+| `stops`            | No         | `0` = any, `1` = nonstop, `2` = 1 stop or fewer, `3` = 2 stops or fewer                                                                                                            |
+| `sort_by`          | No         | `1` = top flights, `2` = price, `3` = departure, `4` = arrival, `5` = duration                                                                                                     |
+| `include_airlines` | No         | IATA codes: `SK,KL,UA` or alliances: `STAR_ALLIANCE,SKYTEAM,ONEWORLD`                                                                                                              |
+| `max_price`        | No         | Maximum ticket price in USD                                                                                                                                                        |
+| `max_duration`     | No         | Maximum flight duration in minutes                                                                                                                                                 |
+| `bags`             | No         | Number of carry-on bags                                                                                                                                                            |
+| `deep_search`      | No         | `true` for browser-identical results (slower)                                                                                                                                      |
+| `currency`         | No         | Default `USD`                                                                                                                                                                      |
+| `gl`               | No         | Google country code for market pricing (e.g., `TH`, `JP`, `ES`). Different markets return different prices for the same route. Set per the Market Selection Strategy in CLAUDE.md. |
 
 ### Multi-City (Open Jaw)
 
@@ -61,22 +62,26 @@ curl -s "https://serpapi.com/search?engine=google_flights&type=3&multi_city_json
 ```
 
 The JSON value for multi_city_json is URL-encoded. Decoded:
+
 ```json
-[{"departure_id":"SFO","arrival_id":"NRT","date":"2026-08-05"},{"departure_id":"ICN","arrival_id":"SFO","date":"2026-08-26"}]
+[
+  { "departure_id": "SFO", "arrival_id": "NRT", "date": "2026-08-05" },
+  { "departure_id": "ICN", "arrival_id": "SFO", "date": "2026-08-26" }
+]
 ```
 
 ### Response Fields
 
 Each flight in `best_flights[]` and `other_flights[]`:
 
-| Field | Description |
-|-------|-------------|
-| `price` | Cash price in USD |
-| `total_duration` | Total minutes |
-| `flights[]` | Array of legs with airline, flight number, times, airplane, legroom |
-| `layovers[]` | Array with duration and airport for each connection |
-| `departure_token` | Token to get return flight options (round trip) |
-| `booking_token` | Token to get booking options |
+| Field             | Description                                                         |
+| ----------------- | ------------------------------------------------------------------- |
+| `price`           | Cash price in USD                                                   |
+| `total_duration`  | Total minutes                                                       |
+| `flights[]`       | Array of legs with airline, flight number, times, airplane, legroom |
+| `layovers[]`      | Array with duration and airport for each connection                 |
+| `departure_token` | Token to get return flight options (round trip)                     |
+| `booking_token`   | Token to get booking options                                        |
 
 `price_insights` includes `lowest_price`, `price_level` (low/typical/high), and `typical_price_range`.
 
@@ -100,20 +105,20 @@ curl -s "https://serpapi.com/search?engine=google_hotels&q=hotels+Tokyo+Japan&ch
 
 ### Parameters
 
-| Param | Required | Description |
-|-------|----------|-------------|
-| `engine` | Yes | `google_hotels` |
-| `q` | Yes | Search query: `hotels Tokyo Japan` |
-| `check_in_date` | Yes | `YYYY-MM-DD` |
-| `check_out_date` | Yes | `YYYY-MM-DD` |
-| `adults` | No | Default 2 |
-| `children` | No | Default 0 |
-| `sort_by` | No | `3` = lowest price, `8` = highest rating, `13` = most reviewed |
-| `min_price` / `max_price` | No | Price range filter |
-| `hotel_class` | No | `2,3,4,5` (comma-separated) |
-| `rating` | No | `7` = 3.5+, `8` = 4.0+, `9` = 4.5+ |
-| `vacation_rentals` | No | Set to `true` for Airbnb-style results |
-| `property_token` | No | Get details for a specific property |
+| Param                     | Required | Description                                                    |
+| ------------------------- | -------- | -------------------------------------------------------------- |
+| `engine`                  | Yes      | `google_hotels`                                                |
+| `q`                       | Yes      | Search query: `hotels Tokyo Japan`                             |
+| `check_in_date`           | Yes      | `YYYY-MM-DD`                                                   |
+| `check_out_date`          | Yes      | `YYYY-MM-DD`                                                   |
+| `adults`                  | No       | Default 2                                                      |
+| `children`                | No       | Default 0                                                      |
+| `sort_by`                 | No       | `3` = lowest price, `8` = highest rating, `13` = most reviewed |
+| `min_price` / `max_price` | No       | Price range filter                                             |
+| `hotel_class`             | No       | `2,3,4,5` (comma-separated)                                    |
+| `rating`                  | No       | `7` = 3.5+, `8` = 4.0+, `9` = 4.5+                             |
+| `vacation_rentals`        | No       | Set to `true` for Airbnb-style results                         |
+| `property_token`          | No       | Get details for a specific property                            |
 
 ## Google Travel Explore
 
@@ -125,20 +130,20 @@ curl -s "https://serpapi.com/search?engine=google_travel_explore&departure_id=SF
 
 ### Parameters
 
-| Param | Required | Description |
-|-------|----------|-------------|
-| `engine` | Yes | `google_travel_explore` |
-| `departure_id` | Yes | Airport code or kgmid |
-| `arrival_id` | No | Specific destination |
-| `arrival_area_id` | No | Region kgmid (e.g., `/m/02j9z` for Europe) |
-| `outbound_date` | No | `YYYY-MM-DD` |
-| `return_date` | No | `YYYY-MM-DD` |
-| `month` | No | `1`-`12` for flexible dates |
-| `travel_duration` | No | `1` = weekend, `2` = 1 week, `3` = 2 weeks |
-| `interest` | No | `/g/11bc58l13w` = Outdoors, `/m/0b3yr` = Beaches |
-| `include_airlines` | No | Filter by airline or alliance |
-| `max_price` | No | Maximum price |
-| `stops` | No | Same as Google Flights |
+| Param              | Required | Description                                      |
+| ------------------ | -------- | ------------------------------------------------ |
+| `engine`           | Yes      | `google_travel_explore`                          |
+| `departure_id`     | Yes      | Airport code or kgmid                            |
+| `arrival_id`       | No       | Specific destination                             |
+| `arrival_area_id`  | No       | Region kgmid (e.g., `/m/02j9z` for Europe)       |
+| `outbound_date`    | No       | `YYYY-MM-DD`                                     |
+| `return_date`      | No       | `YYYY-MM-DD`                                     |
+| `month`            | No       | `1`-`12` for flexible dates                      |
+| `travel_duration`  | No       | `1` = weekend, `2` = 1 week, `3` = 2 weeks       |
+| `interest`         | No       | `/g/11bc58l13w` = Outdoors, `/m/0b3yr` = Beaches |
+| `include_airlines` | No       | Filter by airline or alliance                    |
+| `max_price`        | No       | Maximum price                                    |
+| `stops`            | No       | Same as Google Flights                           |
 
 ## Workflow: Compare Award vs Cash
 

@@ -86,23 +86,23 @@ Returns booking options with provider name, type (airline or third_party), price
 
 Both one-way and round-trip endpoints accept these optional parameters beyond the basics:
 
-| Parameter                | Type    | Description                                       |
-| ------------------------ | ------- | ------------------------------------------------- |
-| `adults`                 | integer | Number of adults (default: 1)                     |
-| `children`               | integer | Number of children (default: 0)                   |
-| `infants_in_seat`        | integer | Infants with own seat (default: 0)                |
-| `infants_on_lap`         | integer | Lap infants (default: 0)                          |
-| `cabin_class`            | string  | `economy`, `premium_economy`, `business`, `first` |
-| `max_stops`              | integer | 0 (direct only), 1, or 2                          |
-| `max_price`              | integer | Maximum price filter                              |
-| `min_carry_on_bags`      | integer | Minimum carry-on bags included                    |
-| `min_checked_bags`       | integer | Minimum checked bags included                     |
-| `departure_time_range`   | object  | `{"earliest_hour": 8, "latest_hour": 20}`         |
-| `return_time_range`      | object  | Same as above, for return leg (round-trip only)   |
-| `airlines_include`       | array   | Only these airline codes                          |
-| `airlines_exclude`       | array   | Exclude these airline codes                       |
-| `allow_separate_tickets` | boolean | Allow separate tickets per leg (default: true)    |
-| `market`                 | string  | Market/region code (default: "US")                |
+| Parameter                | Type    | Description                                                                                                                                                                                                                         |
+| ------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `adults`                 | integer | Number of adults (default: 1)                                                                                                                                                                                                       |
+| `children`               | integer | Number of children (default: 0)                                                                                                                                                                                                     |
+| `infants_in_seat`        | integer | Infants with own seat (default: 0)                                                                                                                                                                                                  |
+| `infants_on_lap`         | integer | Lap infants (default: 0)                                                                                                                                                                                                            |
+| `cabin_class`            | string  | `economy`, `premium_economy`, `business`, `first`                                                                                                                                                                                   |
+| `max_stops`              | integer | 0 (direct only), 1, or 2                                                                                                                                                                                                            |
+| `max_price`              | integer | Maximum price filter                                                                                                                                                                                                                |
+| `min_carry_on_bags`      | integer | Minimum carry-on bags included                                                                                                                                                                                                      |
+| `min_checked_bags`       | integer | Minimum checked bags included                                                                                                                                                                                                       |
+| `departure_time_range`   | object  | `{"earliest_hour": 8, "latest_hour": 20}`                                                                                                                                                                                           |
+| `return_time_range`      | object  | Same as above, for return leg (round-trip only)                                                                                                                                                                                     |
+| `airlines_include`       | array   | Only these airline codes                                                                                                                                                                                                            |
+| `airlines_exclude`       | array   | Exclude these airline codes                                                                                                                                                                                                         |
+| `allow_separate_tickets` | boolean | Allow separate tickets per leg (default: true)                                                                                                                                                                                      |
+| `market`                 | string  | Country code for pricing locale (default: "US"). Use ISO 3166-1 alpha-2 codes: `US`, `TH`, `JP`, `ES`, `GB`, etc. Different markets return different prices for the same route. Set per the Market Selection Strategy in CLAUDE.md. |
 
 ## Understanding the Response
 
@@ -167,3 +167,4 @@ A leg with multiple segments means there's a connection. The layover time is the
 - Use the airport search endpoint liberally — it's fast and avoids guessing codes wrong.
 - When the user says "direct flights only", set `max_stops: 0`.
 - When the user mentions time preferences like "morning flight", use `departure_time_range` (e.g., `{"earliest_hour": 6, "latest_hour": 12}`).
+- **Market affects prices.** The same route can cost significantly less when searched from a different market. Follow the Market Selection Strategy in CLAUDE.md: try departure country, then destination country, then ask the user before trying more.

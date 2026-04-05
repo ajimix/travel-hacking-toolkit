@@ -34,7 +34,7 @@ Construct a URL with a natural language `?q=` parameter. Loads results directly 
 ### URL Template
 
 ```
-https://www.google.com/travel/flights?q=Flights+from+{ORIGIN}+to+{DEST}+on+{DATE}[+returning+{DATE}][+one+way][+business+class][+N+passengers]
+https://www.google.com/travel/flights?q=Flights+from+{ORIGIN}+to+{DEST}+on+{DATE}[+returning+{DATE}][+one+way][+business+class][+N+passengers][&gl=XX]
 ```
 
 ### Default: Economy + Business Comparison
@@ -110,6 +110,7 @@ agent-browser --session flights snapshot -i
 | City names            | `Bangkok`, `Tokyo`      | Works        |
 | Dates as YYYY-MM-DD   | `2026-03-20`            | Works (best) |
 | Natural dates         | `March+20`              | Works        |
+| Market/locale         | `&gl=TH` (country code) | Works        |
 | **Premium economy**   | `+premium+economy`      | **Fails**    |
 | **Multi-city**        | N/A                     | **Fails**    |
 
