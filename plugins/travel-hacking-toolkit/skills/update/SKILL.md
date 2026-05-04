@@ -224,6 +224,21 @@ git add plugins/travel-hacking-toolkit/skills/*/SKILL.md.disabled
 git commit -m "chore: re-disable skills after upstream merge"
 ```
 
+# Step 4.6: Re-sync generated artifacts (post-merge)
+
+Upstream's smoke test (`bash scripts/smoke-test.sh --quick`, also wired into
+GitHub Actions) checks for drift between source files and generated artifacts.
+After the merge resolves, run these and commit any changes:
+
+```
+bash scripts/sync-agent.sh        # CLAUDE.md -> agents/travel-hacker.md
+bash scripts/gen-skill-tables.sh  # SKILL.md frontmatter -> README.md, llms.txt
+bash scripts/smoke-test.sh --quick
+```
+
+If the smoke test reports `MISSING-FIELDS` for a skill, it needs
+`category`, `summary`, and `api_key` in its frontmatter — add them and re-run.
+
 # Step 5: Summary + rollback instructions
 
 Show:
