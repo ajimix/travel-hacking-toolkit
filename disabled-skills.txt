@@ -1,0 +1,28 @@
+# Skills disabled in this fork (loyalty/points/awards layer not used).
+# One skill name per line. Lines starting with # are comments.
+# After each upstream merge, run: bash scripts/disable-skills.sh
+
+alliances
+american-airlines
+amex-travel
+award-calendar
+award-holds
+award-sweet-spots
+awardwallet
+bilt
+booking-guidance
+chase-travel
+compare-flights
+compare-hotels
+hotel-chains
+partner-awards
+points-valuations
+premium-hotels
+round-the-world
+seats-aero
+status-match
+stopovers
+transfer-bonuses
+transfer-partners
+trip-calculator
+wheretocredit

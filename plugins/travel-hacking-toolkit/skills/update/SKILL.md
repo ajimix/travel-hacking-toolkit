@@ -198,6 +198,29 @@ If conflicts:
   - `git rebase --abort`
   - Recommend merge instead.
 
+# Step 4.5: Re-apply local skill disables (post-merge)
+
+After a successful merge, cherry-pick, or rebase that touched
+`plugins/travel-hacking-toolkit/skills/`, re-run the disable script so any
+skills upstream restored are turned off again:
+
+```
+bash scripts/disable-skills.sh
+```
+
+The list of disabled skills lives in `disabled-skills.txt`. The script renames
+each skill's `SKILL.md` to `SKILL.md.disabled`, which hides it from skill
+discovery without deleting content. Idempotent — safe to run when nothing
+needs disabling.
+
+If the script reports newly disabled skills, stage and amend them into the
+merge commit (or make a follow-up commit):
+
+```
+git add plugins/travel-hacking-toolkit/skills/*/SKILL.md.disabled
+git commit -m "chore: re-disable skills after upstream merge"
+```
+
 # Step 5: Summary + rollback instructions
 
 Show:
