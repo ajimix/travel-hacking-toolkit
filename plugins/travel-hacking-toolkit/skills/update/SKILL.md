@@ -1,6 +1,9 @@
 ---
 name: update
 description: Efficiently bring upstream travel-hacking-toolkit updates into a customized install, with preview, selective cherry-pick, and low token usage.
+category: meta
+summary: Pull upstream updates safely. Preview, merge, and re-apply local skill disables.
+api_key: None
 ---
 
 # About
