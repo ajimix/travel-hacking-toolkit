@@ -1,9 +1,15 @@
 # API keys
 .env
+.env.backup*
+.env.bak
 .claude/settings.local.json
 
 # Dependencies
 node_modules/
+
+# Python
+__pycache__/
+*.pyc
 
 # OS
 .DS_Store

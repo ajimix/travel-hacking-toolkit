@@ -31,7 +31,7 @@
     },
     "airbnb": {
       "type": "local",
-      "command": ["npx", "-y", "@borski/mcp-server-airbnb", "--ignore-robots-txt"],
+      "command": ["npx", "-y", "@openbnb/mcp-server-airbnb@latest", "--ignore-robots-txt"],
       "enabled": true
     }
   }

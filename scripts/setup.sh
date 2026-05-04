@@ -14,15 +14,37 @@ echo ""
 echo "Which AI coding tool do you use?"
 echo "  1) OpenCode"
 echo "  2) Claude Code"
-echo "  3) Both"
+echo "  3) Codex"
+echo "  4) All"
 echo ""
-read -rp "Choice [1-3]: " TOOL_CHOICE
+read -rp "Choice [1-4]: " TOOL_CHOICE
 
 case "$TOOL_CHOICE" in
-  1|2|3) ;;
+  1|2|3|4) ;;
   *)
     echo "Invalid choice. Exiting."
     exit 1
+    ;;
+esac
+
+USE_OPENCODE=0
+USE_CLAUDE=0
+USE_CODEX=0
+
+case "$TOOL_CHOICE" in
+  1)
+    USE_OPENCODE=1
+    ;;
+  2)
+    USE_CLAUDE=1
+    ;;
+  3)
+    USE_CODEX=1
+    ;;
+  4)
+    USE_OPENCODE=1
+    USE_CLAUDE=1
+    USE_CODEX=1
     ;;
 esac
 
@@ -31,32 +53,26 @@ setup_api_keys() {
   echo ""
   echo "Setting up API keys..."
 
-  if [[ "$TOOL_CHOICE" == "1" || "$TOOL_CHOICE" == "3" ]]; then
+  if [ "$USE_OPENCODE" -eq 1 ] || [ "$USE_CODEX" -eq 1 ]; then
     if [ ! -f "$REPO_DIR/.env" ]; then
       cp "$REPO_DIR/.env.example" "$REPO_DIR/.env"
-      echo "  Created .env (OpenCode). Edit it to add your API keys."
+      echo "  Created .env (OpenCode/Codex). Edit it to add your API keys."
     else
       echo "  .env already exists. Skipping."
     fi
   fi
 
-  if [[ "$TOOL_CHOICE" == "2" || "$TOOL_CHOICE" == "3" ]]; then
-    local claude_settings="$REPO_DIR/.claude/settings.local.json"
-    if [ ! -f "$claude_settings" ]; then
-      if [ -f "$REPO_DIR/.claude/settings.local.json.example" ]; then
-        cp "$REPO_DIR/.claude/settings.local.json.example" "$claude_settings"
-        echo "  Created .claude/settings.local.json (Claude Code, auto-gitignored)."
-        echo "  Edit it to add your API keys."
-      fi
-    else
-      echo "  .claude/settings.local.json already exists. Skipping."
-    fi
+  if [ "$USE_CLAUDE" -eq 1 ]; then
+    echo "  Claude Code reads API keys from your shell environment, not from a config file."
+    echo "  Use scripts/setup-keys.sh after this finishes (or run /travel-hacker:getting-started inside Claude Code)."
   fi
 
   echo ""
   echo "  The 5 free MCP servers work without any keys."
   echo "  For the full experience, add at minimum:"
-  echo "    SERPAPI_API_KEY        Cash price comparison"
+  echo "    SEATS_AERO_API_KEY     Award flight search (the main event)"
+  echo "    DUFFEL_API_KEY_LIVE    Primary cash flight prices (search free, pay per booking)"
+  echo "    IGNAV_API_KEY          Secondary cash flight prices (1,000 free requests)"
   echo ""
 }
 
@@ -64,11 +80,66 @@ setup_api_keys() {
 install_atlas_deps() {
   echo "Installing Atlas Obscura dependencies..."
   if command -v npm &>/dev/null; then
-    (cd "$REPO_DIR/skills/atlas-obscura" && npm install --silent 2>/dev/null)
-    echo "  Done."
+    if (cd "$REPO_DIR/skills/atlas-obscura" && npm install --silent >/dev/null 2>&1); then
+      echo "  Done."
+    else
+      echo "  npm install failed. Atlas Obscura will auto-install on first use if Node.js is available."
+    fi
   else
     echo "  npm not found. Atlas Obscura will auto-install on first use if Node.js is available."
   fi
+}
+
+# --- Optional tools ---
+install_optional_tools() {
+  echo ""
+  echo "Optional tools for additional flight search skills:"
+  echo ""
+
+  # agent-browser (for google-flights skill)
+  if command -v agent-browser &>/dev/null; then
+    echo "  ✓ agent-browser already installed (google-flights skill)"
+  else
+    echo "  agent-browser: Enables the google-flights skill (browser-automated Google Flights)."
+    read -rp "  Install agent-browser? [y/N]: " AB_CHOICE
+    if [[ "$AB_CHOICE" == "y" || "$AB_CHOICE" == "Y" ]]; then
+      npm install -g agent-browser && agent-browser install
+      echo "  ✓ agent-browser installed."
+    else
+      echo "  Skipped. google-flights skill won't work without it."
+    fi
+  fi
+
+  echo ""
+
+  # Southwest: Docker or Patchright
+  echo "  Southwest skill: searches southwest.com for fare classes and points pricing."
+  echo "  Requires either Docker (recommended) or Patchright (Python)."
+  echo ""
+
+  if command -v docker &>/dev/null; then
+    echo "  Docker detected. Pulling pre-built images..."
+    docker pull ghcr.io/borski/sw-fares:latest 2>/dev/null && echo "  ✓ Southwest Docker image ready." || echo "  Could not pull SW image. Build locally: docker build -t sw-fares skills/southwest/"
+    docker pull ghcr.io/borski/aa-miles-check:latest 2>/dev/null && echo "  ✓ American Airlines Docker image ready." || echo "  Could not pull AA image. Build locally: docker build -t aa-check skills/american-airlines/"
+    docker pull ghcr.io/borski/ticketsatwork:latest 2>/dev/null && echo "  ✓ TicketsAtWork Docker image ready." || echo "  Could not pull TaW image. Build locally: docker build -t ticketsatwork skills/ticketsatwork/"
+    docker pull ghcr.io/borski/chase-travel:latest 2>/dev/null && echo "  ✓ Chase Travel Docker image ready." || echo "  Could not pull Chase image. Build locally: docker build -t chase-travel skills/chase-travel/"
+    docker pull ghcr.io/borski/amex-travel:latest 2>/dev/null && echo "  ✓ Amex Travel Docker image ready." || echo "  Could not pull Amex image. Build locally: docker build -t amex-travel skills/amex-travel/"
+  else
+    echo "  Docker not found."
+    if python3 -c "import patchright" 2>/dev/null; then
+      echo "  ✓ Patchright already installed (southwest skill, headed mode)"
+    else
+      read -rp "  Install Patchright for Southwest skill? [y/N]: " PR_CHOICE
+      if [[ "$PR_CHOICE" == "y" || "$PR_CHOICE" == "Y" ]]; then
+        pip install patchright && patchright install chromium
+        echo "  ✓ Patchright installed. Southwest skill will open a Chrome window briefly."
+      else
+        echo "  Skipped. Southwest skill won't work without Docker or Patchright."
+      fi
+    fi
+  fi
+
+  echo ""
 }
 
 # --- Global install (optional) ---
@@ -80,10 +151,10 @@ offer_global_install() {
   read -rp "Install globally? [y/N]: " GLOBAL_CHOICE
 
   if [[ "$GLOBAL_CHOICE" == "y" || "$GLOBAL_CHOICE" == "Y" ]]; then
-    if [[ "$TOOL_CHOICE" == "1" || "$TOOL_CHOICE" == "3" ]]; then
+    if [ "$USE_OPENCODE" -eq 1 ]; then
       install_skills_to "$HOME/.config/opencode/skills"
     fi
-    if [[ "$TOOL_CHOICE" == "2" || "$TOOL_CHOICE" == "3" ]]; then
+    if [ "$USE_CLAUDE" -eq 1 ]; then
       install_skills_to "$HOME/.claude/skills"
     fi
   else
@@ -114,30 +185,127 @@ install_skills_to() {
   echo "  Done."
 }
 
+install_codex_plugin() {
+  local plugin_name="travel-hacking-toolkit"
+  local plugin_source="$REPO_DIR/plugins/$plugin_name"
+  local codex_home="${CODEX_HOME:-$HOME/.codex}"
+  local codex_plugins_dir="$codex_home/plugins"
+  local codex_plugin_path="$codex_plugins_dir/$plugin_name"
+  local marketplace_root="${CODEX_MARKETPLACE_ROOT:-$HOME/.agents}"
+  local marketplace_dir="$marketplace_root/plugins"
+  local marketplace_path="$marketplace_dir/marketplace.json"
+
+  echo ""
+  echo "Installing Codex plugin..."
+
+  if ! command -v python3 &>/dev/null; then
+    echo "  python3 not found. Skipping Codex plugin install." >&2
+    echo "  Install Python 3 (https://www.python.org/downloads/ or 'brew install python@3.12') and re-run setup." >&2
+    return 1
+  fi
+
+  mkdir -p "$codex_plugins_dir" "$marketplace_dir"
+
+  if [ -L "$codex_plugin_path" ] || [ -e "$codex_plugin_path" ]; then
+    rm -rf "$codex_plugin_path"
+  fi
+
+  ln -s "$plugin_source" "$codex_plugin_path"
+
+  python3 - "$marketplace_path" <<'PY'
+import json
+import os
+import sys
+
+path = sys.argv[1]
+entry = {
+    "name": "travel-hacking-toolkit",
+    "source": {
+        "source": "local",
+        "path": "./plugins/travel-hacking-toolkit"
+    },
+    "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+    },
+    "category": "Productivity"
+}
+
+if os.path.exists(path):
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+else:
+    data = {
+        "name": "local-plugins",
+        "interface": {
+            "displayName": "Local Plugins"
+        },
+        "plugins": []
+    }
+
+data.setdefault("name", "local-plugins")
+data.setdefault("interface", {})
+data["interface"].setdefault("displayName", "Local Plugins")
+plugins = data.setdefault("plugins", [])
+
+for idx, plugin in enumerate(plugins):
+    if plugin.get("name") == entry["name"]:
+        plugins[idx] = entry
+        break
+else:
+    plugins.append(entry)
+
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+
+  echo "  Plugin symlinked to $codex_plugin_path"
+  echo "  Marketplace updated at $marketplace_path"
+  echo "  Launch Codex from this repo after running: source .env"
+}
+
 # --- Run ---
 setup_api_keys
 install_atlas_deps
-offer_global_install
+install_optional_tools
+
+# Install git hooks for contributors. Safe to run on any clone; no-ops outside git.
+echo ""
+echo "Installing git hooks..."
+bash "$REPO_DIR/scripts/install-hooks.sh" 2>&1 | sed 's/^/  /' || true
+
+if [ "$USE_CODEX" -eq 1 ]; then
+  install_codex_plugin
+fi
+
+if [ "$USE_OPENCODE" -eq 1 ] || [ "$USE_CLAUDE" -eq 1 ]; then
+  offer_global_install
+fi
 
 echo ""
 echo "=== Setup complete! ==="
 echo ""
 echo "Launch your tool from this directory:"
 
-if [[ "$TOOL_CHOICE" == "1" || "$TOOL_CHOICE" == "3" ]]; then
+if [ "$USE_OPENCODE" -eq 1 ]; then
   echo "  OpenCode:    opencode"
 fi
-if [[ "$TOOL_CHOICE" == "2" || "$TOOL_CHOICE" == "3" ]]; then
-  echo "  Claude Code: claude --strict-mcp-config --mcp-config .mcp.json"
+if [ "$USE_CLAUDE" -eq 1 ]; then
+  echo "  Claude Code: claude --plugin-dir ."
+fi
+if [ "$USE_CODEX" -eq 1 ]; then
+  echo "  Codex:       source .env && codex"
 fi
 
 echo ""
 
-if [[ "$TOOL_CHOICE" == "1" || "$TOOL_CHOICE" == "3" ]]; then
+if [ "$USE_OPENCODE" -eq 1 ] || [ "$USE_CODEX" -eq 1 ]; then
   echo "Add your API keys:  edit .env"
 fi
-if [[ "$TOOL_CHOICE" == "2" || "$TOOL_CHOICE" == "3" ]]; then
-  echo "Add your API keys:  edit .claude/settings.local.json"
+if [ "$USE_CLAUDE" -eq 1 ]; then
+  echo "Add your API keys:  set them in your shell rc (~/.zshrc or ~/.bashrc),"
+  echo "                    or run /travel-hacker:getting-started inside Claude Code."
 fi
 
 echo ""
