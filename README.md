@@ -204,6 +204,7 @@ Start here: the **orchestration skills** call everything else automatically.
 | **rapidapi** | Booking.com hotel prices. | RapidAPI |
 | **serpapi** | Google Hotels search and destination discovery. | SerpAPI |
 | **ticketsatwork** | TicketsAtWork (EBG) corporate-perks portal. Hotels, theme park tickets, attractions, live events. Often beats portals by 10-30%. Docker: `ghcr.io/borski/ticketsatwork`. | None (requires TaW account + Patchright) |
+| **vrbo** | VRBO whole-home, condo, and cabin search via Patchright. Complements Airbnb for group stays. | None (requires Patchright) |
 <!-- END: readme:hotels -->
 
 Also use **tripadvisor** (under Destinations) for hotel ratings, rankings, subratings, and reviews.

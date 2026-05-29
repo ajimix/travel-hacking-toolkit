@@ -59,6 +59,7 @@ Run these in parallel where possible. **Never fail silently.**
 | Source | Skill/Tool | Speed | What It Finds |
 |--------|------------|-------|---------------|
 | Airbnb | `airbnb_search` MCP tool | ~5s | Entire homes, private rooms, with total pricing |
+| VRBO | `vrbo` skill (Patchright) | ~20s | Whole homes, condos, cabins. Professionally-managed units often not on Airbnb. Headed/Docker — behind Akamai. |
 
 ### Premium Property Databases (local, instant)
 
@@ -79,6 +80,9 @@ PARALLEL GROUP 1 (fast, ~3-5s):
   - LiteAPI: negotiated hotel rates (web search)
   - Airbnb: vacation rentals in the area
   - Local data: check premium-hotels databases for the city
+
+PARALLEL GROUP 1b (slower, ~20s, headed/Docker — behind Akamai):
+  - VRBO: whole homes / condos / cabins — vrbo skill (run alongside Airbnb for whole-home comparisons)
 
 PARALLEL GROUP 2 (slow, ~45s, Docker):
   - Chase Travel: --hotel --dest "City" --checkin YYYY-MM-DD --checkout YYYY-MM-DD --json
