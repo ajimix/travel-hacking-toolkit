@@ -2,7 +2,7 @@
 name: award-holds
 description: Per-program rules for placing award flights on hold before transferring points. Covers programs with holds (AA, Lufthansa, Flying Blue, Cathay, Turkish, Virgin Atlantic) and those without. Includes transfer-speed reference.
 category: reference
-summary: Per-program rules for placing award flight tickets on hold. Covers 6 programs with reliable holds (AA 24h online, LH 5 days, FB 3 days, CX 2 days, Turkish 2 days, Virgin Atlantic 1-2 days), Singapore as agent-discretionary, and the negative space (UA/AS/DL/Aeroplan/BA/ANA/Qatar/Korean - most programs do not allow holds).
+summary: Per-program rules for placing award flight tickets on hold. Covers 6 programs with reliable holds (AA 24h online, LH 5 days, FB 3 days, CX 2 days, Turkish 2 days, Virgin Atlantic 1-2 days), Singapore as agent-discretionary, and the negative space (UA/AS/DL/Aeroplan/BA/etc. — most programs do not allow holds).
 allowed-tools: Bash(jq *), Read
 ---
 
