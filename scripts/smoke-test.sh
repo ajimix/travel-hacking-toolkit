@@ -175,7 +175,13 @@ PY
     else
       bad_images=0
       missing_list=""
-      for image in patchright-docker sw-fares aa-miles-check chase-travel amex-travel ticketsatwork; do
+      # Derive the image list from skill-meta.tsv's docker_image column (basename)
+      # plus the base image, so a new containerized skill is covered automatically
+      # once it declares docker_image — no need to hand-edit this list.
+      skill_images=$(awk -F'\t' 'NR>1 && $5 ~ /ghcr\.io\/borski\// {n=$5; sub(/.*\//,"",n); print n}' scripts/skill-meta.tsv | sort -u)
+      all_images="patchright-docker $skill_images"
+      n_images=$(echo $all_images | wc -w | xargs)
+      for image in $all_images; do
         out=$(docker manifest inspect "ghcr.io/borski/$image:latest" 2>&1 >/dev/null) || true
         if [ -n "$out" ]; then
           # Re-classify network/auth errors so we don't fail the test for them
@@ -189,7 +195,7 @@ PY
         fi
       done
       if [ "$bad_images" -eq 0 ]; then
-        ok "all 6 Docker images exist on ghcr.io"
+        ok "all $n_images Docker images exist on ghcr.io"
       else
         fail "$bad_images Docker image(s) genuinely missing on ghcr.io:$missing_list"
       fi
