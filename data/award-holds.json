@@ -1,8 +1,8 @@
 {
   "_meta": {
-    "last_updated": "2026-04-29",
+    "last_updated": "2026-07-12",
     "staleness_days": 90,
-    "description": "Per-program rules for placing award flight tickets on hold. Holds let you reserve award space without paying or transferring points yet. Critical for transferable-currency bookings (Amex MR, Chase UR, etc.) where the transfer takes hours to days. Includes 6 programs with reliable holds (AA, Lufthansa M&M, Flying Blue, Cathay Asia Miles, Turkish, Virgin Atlantic), Singapore KrisFlyer as agent-discretionary, and the negative space (most programs do NOT allow holds). Sourced from Frugal Flyer (canonical 2024 list) and Upgraded Points (current 2025 details), cross-checked against airline-specific sources.",
+    "description": "Per-program rules for placing award flight tickets on hold. Holds let you reserve award space without paying or transferring points yet. Critical for transferable-currency bookings (Amex MR, Chase UR, etc.) where the transfer takes hours to days. Includes 9 programs with holds (AA, Lufthansa M&M, Flying Blue, Cathay Asia Miles, Turkish, Virgin Atlantic, ANA, Emirates, EVA Air), Singapore KrisFlyer as agent-discretionary, and the negative space (many programs do NOT allow holds). Sourced from Frugal Flyer (canonical 2024 list), Upgraded Points, One Mile at a Time, and Points Miles & Bling (2025-2026), cross-checked against airline-specific sources. ANA, Emirates, and EVA were added from OMAAT/PMB/UP after they were reported allowing holds; Frugal Flyer's 2024 list omitted them, so they carry LIKELY confidence.",
     "primary_sources_general": [
       "https://frugalflyer.ca/blog/frequent-flyer-program-award-ticket-holds/",
       "https://upgradedpoints.com/travel/airlines/airline-award-hold-policies-fees/",
@@ -177,6 +177,46 @@
       "confidence": "VERIFIED"
     },
     {
+      "id": "emirates_skywards",
+      "name": "Emirates Skywards",
+      "alliance": "non-aligned",
+      "category": "positive",
+      "max_hold_days": 1,
+      "hold_fee_usd": 0,
+      "phone_booking_fee_usd": null,
+      "self_serve_online": false,
+      "partner_awards": "no",
+      "phone_us": null,
+      "restrictions": "Up to 1 day, phone booking required (call Emirates; verify the current award-desk number). Reported by One Mile at a Time and Points Miles & Bling (2025-2026). Emirates award surcharges are very high — factor the cash fees before holding.",
+      "recent_changes": null,
+      "sources": [
+        "https://onemileatatime.com/guides/airline-award-ticket-holds/",
+        "https://pointsmilesandbling.com/airline-award-ticket-holds/"
+      ],
+      "last_verified": "2026-07-12",
+      "confidence": "LIKELY"
+    },
+    {
+      "id": "eva_air_infinity",
+      "name": "EVA Air Infinity MileageLands",
+      "alliance": "Star Alliance",
+      "category": "positive",
+      "max_hold_days": 1,
+      "hold_fee_usd": 0,
+      "phone_booking_fee_usd": null,
+      "self_serve_online": true,
+      "partner_awards": "no",
+      "phone_us": null,
+      "restrictions": "Up to 1 day. EVA supports online award holds (one of the few besides AA). Reported by One Mile at a Time and Points Miles & Bling (2025-2026).",
+      "recent_changes": null,
+      "sources": [
+        "https://onemileatatime.com/guides/airline-award-ticket-holds/",
+        "https://pointsmilesandbling.com/airline-award-ticket-holds/"
+      ],
+      "last_verified": "2026-07-12",
+      "confidence": "LIKELY"
+    },
+    {
       "id": "united_mileageplus",
       "name": "United MileagePlus",
       "alliance": "Star Alliance",
@@ -319,19 +359,21 @@
       "id": "ana_mileage_club",
       "name": "ANA Mileage Club",
       "alliance": "Star Alliance",
-      "category": "negative",
-      "max_hold_days": 0,
-      "hold_fee_usd": null,
+      "category": "positive",
+      "max_hold_days": 2,
+      "hold_fee_usd": 0,
       "phone_booking_fee_usd": null,
       "self_serve_online": false,
       "partner_awards": "no",
       "phone_us": null,
-      "restrictions": "No published hold policy. Workaround: book a Star Alliance partner award via Lufthansa Miles & More (5-day hold) or Virgin Atlantic Flying Club (1-2 day hold) when an ANA-operated flight has the space.",
+      "restrictions": "Up to 2 days, phone booking required (call ANA's award desk; verify the current number). Frugal Flyer's 2024 list did not include ANA, but Upgraded Points, One Mile at a Time, and Points Miles & Bling (2025-2026) all report a ~2-day phone hold on ANA-operated award space. Partner space may not be holdable — confirm on the call. Alternative: hold the same ANA-operated seat via Virgin Atlantic (1-2 days) or Lufthansa Miles & More (5 days).",
       "recent_changes": null,
       "sources": [
-        "https://frugalflyer.ca/blog/frequent-flyer-program-award-ticket-holds/"
+        "https://onemileatatime.com/guides/airline-award-ticket-holds/",
+        "https://pointsmilesandbling.com/airline-award-ticket-holds/",
+        "https://upgradedpoints.com/travel/airlines/airline-award-hold-policies-fees/"
       ],
-      "last_verified": "2026-04-29",
+      "last_verified": "2026-07-12",
       "confidence": "LIKELY"
     },
     {
@@ -392,7 +434,6 @@
       "British Airways Executive Club",
       "Iberia Plus",
       "Etihad Guest (not canonical, but no published policy)",
-      "ANA Mileage Club",
       "Qatar Privilege Club",
       "Korean SKYPASS"
     ],
