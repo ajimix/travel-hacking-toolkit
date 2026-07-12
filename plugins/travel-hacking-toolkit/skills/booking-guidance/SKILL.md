@@ -11,6 +11,31 @@ Finding the deal is half the battle. Telling the user how to actually book it is
 
 **Reference data:** `data/alliances.json` has booking details for major programs in `key_booking_relationships`.
 
+## Program Fee Profiles
+
+**Check this before recommending a transfer or locking in a departure city.** Fees vary dramatically by program and origin airport and can add $100-700+ per person on top of the miles cost. Two things to keep in mind reading the table: (1) several programs are surcharge-free on their own metal and most partners but pass heavy surcharges on *specific* partners (notably British Airways metal) — the YQ column calls those out; (2) dollar figures are per direction and **scale with cabin** — economy surcharges are materially lower than the business-class figures shown for surcharge-heavy metal. Rows marked ⚠️ are high-surcharge programs that often lose to cash.
+
+| Program | YQ Surcharge? | Typical fees/pp | Notes |
+|---------|--------------|-----------------|-------|
+| Aeroplan (Air Canada) | No | $50-100 | No YQ pass-through on Star Alliance partners. Low fees. Best for LH/LX/UA awards. |
+| Flying Blue (AF/KLM) | Yes | ~$250-400/way economy, ~$489-600/way business, ex-CDG | AF passes full fuel surcharge; France adds heavy departure tax. Worst from Paris. |
+| United MileagePlus | No | $50-100 | No YQ on most partners. |
+| Virgin Atlantic | Yes (on VS metal) | Cabin-dependent: ~$150-300/way economy, ~$500-700/way Upper Class; low on Delta metal | Surcharges scale with cabin. Delta metal carries surcharges US↔UK specifically. |
+| Turkish Miles & Smiles | No on UA/Turkish metal; YES on Lufthansa Group (LH/LX/OS/SN) | $20-50 (own/UA metal) | Extremely low on own/UA metal. Book by phone (online unreliable). Dec 2025 devaluation. |
+| British Airways Avios | Yes | ~$200-400/way economy, ~$400-700/way business, BA long-haul metal | Notorious surcharges on BA metal. Use short-haul, or partner metal (AA/Alaska/Qatar), instead. |
+| American AAdvantage | No on own metal + most partners; YES on British Airways & Iberia | $50-75 base; on BA/IB metal ~$200-400/way economy to $400-700+/way business | Surcharge-free on JAL/Cathay/Qatar. Route partner awards away from BA/Iberia metal. |
+| Alaska / Atmos Rewards | No on own metal + most partners; YES on British Airways, Icelandair, Hainan | $25-75 base; on BA metal ~$150-400/way economy up to ~$1,000/way premium | Renamed from Mileage Plan (Aug 2025). Surcharge-free on Cathay/JAL/Qantas/Condor/Fiji. |
+| Avianca LifeMiles | No | ~$25/ticket | No-YQ Star Alliance program. Predictable total even on ANA/Lufthansa/Swiss metal. |
+| Iberia Plus (Avios) | Low (far less than BA) | ~$150-200 RT transatlantic business | The transatlantic Avios sweet spot: MAD-US business ~40.5K-59K Avios/way with modest surcharges. |
+| JAL Mileage Bank | No on JAL metal | from ~$20 | Cheap distance-based partner chart. Partner metal (e.g. BA) may add YQ. |
+| Qatar Privilege Club (Avios) | No fuel surcharge on Qatar metal | ~$30-100 per-segment fee | Excellent Qsuites value. Per-segment cash fee returned in 2025. |
+| Delta SkyMiles | No | No award fees | Dynamic award pricing is the real cost, not fees. |
+| ⚠️ ANA Mileage Club | Yes — heavy | ~$95-185/way US-Japan YQ | Round-trip booking only; no awards within 96h of departure. |
+| ⚠️ Cathay / Asia Miles | Yes | High on long-haul; hiked again in 2026 | Passes full carrier-imposed surcharges. |
+| ⚠️ Emirates Skywards | Yes — heavy | Among the highest YQ of any program | Surcharges often kill the redemption vs cash. |
+
+**Key rule:** If the trip ends in Paris or London, or routes on Air France / BA / Virgin / Emirates metal, factor $300-700/pp *per direction* in fees before comparing programs. A 40K Flying Blue award from CDG often costs more in cash fees than a 50K Aeroplan award from FRA. When a program passes surcharges only on *specific* partners (AA/Alaska on BA metal, Turkish on Lufthansa Group), route around that metal to keep fees low.
+
 ## General Booking Flow
 
 1. **Find availability** (Seats.aero, airline website, or MCP tool)

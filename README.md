@@ -205,6 +205,7 @@ Start here: the **orchestration skills** call everything else automatically.
 | **serpapi** | Google Hotels search and destination discovery. | SerpAPI |
 | **sutochno** | Sutochno.ru Russian apartment search via Patchright. Ruble / Mir payment for Georgia / CIS stays. | None |
 | **ticketsatwork** | TicketsAtWork (EBG) corporate-perks portal. Hotels, theme park tickets, attractions, live events. Often beats portals by 10-30%. Docker: `ghcr.io/borski/ticketsatwork`. | None (requires TaW account + Patchright) |
+| **vrbo** | VRBO whole-home, condo, and cabin search via Patchright. Complements Airbnb for group stays. Docker: `ghcr.io/borski/vrbo`. | None (requires Patchright) |
 <!-- END: readme:hotels -->
 
 Also use **tripadvisor** (under Destinations) for hotel ratings, rankings, subratings, and reviews.
@@ -239,7 +240,7 @@ These skills carry the deep institutional knowledge that used to live in CLAUDE.
 | Skill | What It Covers |
 |-------|---------------|
 | **alliances** | Star Alliance, oneworld, SkyTeam membership and recent shifts (SAS to SkyTeam, ITA to Star, Hawaiian/Fiji to oneworld). Key cross-alliance booking relationships. |
-| **award-holds** | Per-program rules for placing award flight tickets on hold. Covers 6 programs with reliable holds (AA 24h online, LH 5 days, FB 3 days, CX 2 days, Turkish 2 days, Virgin Atlantic 1-2 days), Singapore as agent-discretionary, and the negative space (UA/AS/DL/Aeroplan/BA/etc. — most programs do not allow holds). |
+| **award-holds** | Per-program rules for placing award flight tickets on hold. Covers 9 programs with holds (AA 24h online, LH 5 days, FB 3 days, CX 2 days, Turkish 2 days, Virgin Atlantic 1-2 days, ANA 2 days, Emirates 1 day, EVA online), Singapore as agent-discretionary, and the negative space (UA/AS/DL/Aeroplan/BA/Qatar/Korean/Etihad - many programs still do not allow holds). |
 | **award-sweet-spots** | Catalog of legendary, excellent, and good award redemptions with current rates and devaluation history. |
 | **booking-guidance** | The booking flow, hold-before-transfer rule, phone numbers for major programs. |
 | **cabin-codes** | IATA cabin codes (F/J/W/Y) and saver fare class codes (X/I/O) for partner-bookable inventory. |
@@ -287,6 +288,7 @@ Five skills run as Docker containers (browser-automated via Patchright), plus a 
 | [`ghcr.io/borski/chase-travel`](https://github.com/borski/travel-hacking-toolkit/pkgs/container/chase-travel) | `chase-travel` | Chase UR portal for flights, hotels, Points Boost, Edit benefits. Requires Sapphire. | [skills/chase-travel](skills/chase-travel/Dockerfile) |
 | [`ghcr.io/borski/sw-fares`](https://github.com/borski/travel-hacking-toolkit/pkgs/container/sw-fares) | `southwest` | SW fare classes, points pricing, Companion Pass. Change flight price drop monitor. | [skills/southwest](skills/southwest/Dockerfile) |
 | [`ghcr.io/borski/ticketsatwork`](https://github.com/borski/travel-hacking-toolkit/pkgs/container/ticketsatwork) | `ticketsatwork` | TicketsAtWork (EBG) corporate-perks portal. Hotels, theme park tickets, attractions, live events. Often beats portals by 10-30%. | [skills/ticketsatwork](skills/ticketsatwork/Dockerfile) |
+| [`ghcr.io/borski/vrbo`](https://github.com/borski/travel-hacking-toolkit/pkgs/container/vrbo) | `vrbo` | VRBO whole-home, condo, and cabin search via Patchright. Complements Airbnb for group stays. | [skills/vrbo](skills/vrbo/Dockerfile) |
 <!-- END: readme:docker -->
 
 ### Usage

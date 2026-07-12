@@ -1,8 +1,8 @@
 ---
 name: award-holds
-description: Per-program rules for placing award flights on hold before transferring points. Covers programs with holds (AA, Lufthansa, Flying Blue, Cathay, Turkish, Virgin Atlantic) and those without. Includes transfer-speed reference.
+description: Per-program rules for placing award flights on hold before transferring points. Covers programs with holds (AA, Lufthansa, Flying Blue, Cathay, Turkish, Virgin Atlantic, ANA, Emirates, EVA Air) and those without. Includes transfer-speed reference.
 category: reference
-summary: Per-program rules for placing award flight tickets on hold. Covers 6 programs with reliable holds (AA 24h online, LH 5 days, FB 3 days, CX 2 days, Turkish 2 days, Virgin Atlantic 1-2 days), Singapore as agent-discretionary, and the negative space (UA/AS/DL/Aeroplan/BA/etc. — most programs do not allow holds).
+summary: Per-program rules for placing award flight tickets on hold. Covers 9 programs with holds (AA 24h online, LH 5 days, FB 3 days, CX 2 days, Turkish 2 days, Virgin Atlantic 1-2 days, ANA 2 days, Emirates 1 day, EVA online), Singapore as agent-discretionary, and the negative space (UA/AS/DL/Aeroplan/BA/Qatar/Korean/Etihad - many programs still do not allow holds).
 allowed-tools: Bash(jq *), Read
 ---
 
@@ -33,7 +33,7 @@ Without a hold, you risk losing the award seat while the transfer pends. **A hol
 - Award availability search (use [`seats-aero`](../seats-aero/SKILL.md))
 - Routing-rule questions (use [`partner-awards`](../partner-awards/SKILL.md))
 
-## Programs That Allow Holds (6 reliable + Singapore agent-discretionary)
+## Programs That Allow Holds (9 + Singapore agent-discretionary)
 
 | Program | Max Days | Hold Fee | Phone Fee | Online Self-Serve | Confidence |
 |---------|----------|----------|-----------|-------------------|------------|
@@ -43,7 +43,12 @@ Without a hold, you risk losing the award seat while the transfer pends. **A hol
 | Cathay Asia Miles | 2 | $0 | $39 | No | VERIFIED |
 | Turkish Miles & Smiles | 2 | $0 | varies | No | LIKELY |
 | Virgin Atlantic Flying Club | 1-2 | $0 | $0 | No | VERIFIED |
+| ANA Mileage Club | 2 | $0 | varies | No | LIKELY |
+| Emirates Skywards | 1 | $0 | varies | No | LIKELY |
+| EVA Air Infinity MileageLands | 1 | $0 | varies | **Yes** | LIKELY |
 | Singapore KrisFlyer | agent discretion | $0 | $25 or 2,500 miles | No | LIKELY |
+
+ANA, Emirates, and EVA Air were not on Frugal Flyer's canonical 2024 list but are reported allowing holds by One Mile at a Time, Points Miles & Bling, and Upgraded Points (2025-2026) — hence LIKELY confidence. Verify on the call before relying on the hold.
 
 ## Programs That Do NOT Allow Holds
 
@@ -55,7 +60,6 @@ These programs require you to have the points in your account at booking time. P
 - Air Canada Aeroplan
 - British Airways Executive Club
 - Iberia Plus
-- ANA Mileage Club
 - Qatar Privilege Club
 - Korean SKYPASS
 - Etihad Guest (no published policy)

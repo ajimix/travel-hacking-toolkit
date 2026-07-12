@@ -321,11 +321,47 @@ The `cursor` is a Unix timestamp. Treat it as opaque. Rare duplicates are possib
 1. **Cached Search** across multiple airports and date ranges to see what's available
 2. **Compare programs**: check which `source` has the cheapest miles for the same route
 3. **Identify saver vs dynamic**: low prices (e.g., 57.5K J for AA transatlantic) = saver. High prices (100K+) = dynamic.
-4. **Get Trip Details** on promising availability IDs for flight times, connections, and booking links
-5. **Verify freshness**: check `ComputedLastSeen`. If stale (hours old), the availability may be phantom.
-6. **Cross-reference**: check the airline's own site or call to confirm before transferring points
-7. **Use booking_links** from trip response to book directly on each program's site
-8. Cross-reference with AwardWallet balances to confirm enough points
+4. **Always pull Trip Details** on promising availability IDs — do not stop at the search summary. The search summary (`JMileageCost`) only shows the cheapest itinerary. Trip details show all available options including Standard/dynamic tiers that the summary hides. This is mandatory for any search involving 2+ travelers.
+5. **Apply the layover filter** (see below) before presenting results.
+6. **Verify freshness**: check `ComputedLastSeen`. If stale (hours old), the availability may be phantom.
+7. **Cross-reference**: check the airline's own site or call to confirm before transferring points
+8. **Use booking_links** from trip response to book directly on each program's site
+9. Cross-reference with AwardWallet balances to confirm enough points
+
+## Layover Quality Filter
+
+After pulling trip details, always calculate layover time for every itinerary. **Flag any layover over 3 hours.** Do not silently present a bad-layover itinerary as the recommendation just because it's cheapest.
+
+When the cheapest option has a layover over 3 hours:
+1. Show it with an explicit flag: "⚠️ 8h layover in FRA"
+2. Automatically surface the next cheapest itinerary with a layover under 3 hours alongside it
+3. Let the user decide whether the points savings justify the wait — never make that call silently
+
+**Why this matters:** Saver inventory often has the cheapest price but worst routings (long layovers, odd connections). Standard inventory typically costs 20-30% more in miles but offers significantly better itineraries. The cheapest award is not always the best award.
+
+```bash
+# Calculate layover duration from trip segments
+# TotalDuration = full trip (gate to gate including layovers)
+# Sum of individual segment durations = pure flight time
+# Layover = TotalDuration - sum(segment durations)
+# Flag if any single layover exceeds 180 minutes
+
+curl -s -H "Partner-Authorization: $SEATS_AERO_API_KEY" \
+  "https://seats.aero/partnerapi/trips/{id}" | jq '
+  .data[] | {
+    miles: .MileageCost,
+    flights: .FlightNumbers,
+    total_min: .TotalDuration,
+    segments: [.AvailabilitySegments[] | {
+      flight: .FlightNumber,
+      from: .OriginAirport,
+      to: .DestinationAirport,
+      departs: .DepartsAt,
+      arrives: .ArrivesAt
+    }]
+  }
+'
+```
 
 ## Why Results May Be Empty
 
