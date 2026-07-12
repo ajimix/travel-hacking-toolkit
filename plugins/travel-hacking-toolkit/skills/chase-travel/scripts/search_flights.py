@@ -220,8 +220,118 @@ def wait_for_2fa_code(timeout=180):
     return None
 
 
+def _detect_2fa_options(page):
+    """Inspect the 2FA picker's option cards to tell SMS from mobile-app push.
+
+    Chase renders each option as an `mds-list-item` custom element whose label
+    text lives inside its shadow DOM, so plain body text misses it. Read each
+    card's shadowRoot text and tag the mobile-app card for later clicking.
+    Returns a dict: {hasSms, hasMobile, count}.
+    """
+    try:
+        return page.evaluate(
+            r"""() => {
+            const items = Array.from(document.querySelectorAll('mds-list-item, li.list-item--navigational'));
+            let hasSms = !!document.querySelector('mds-list-item#sms');
+            let hasMobile = false;
+            items.forEach((el) => {
+                const shadow = el.shadowRoot ? (el.shadowRoot.textContent || '') : '';
+                const txt = ((el.textContent || '') + ' ' + shadow).toLowerCase();
+                if (/text message|text me|\bsms\b/.test(txt)) hasSms = true;
+                if (/mobile app|our app|confirm using|push notification/.test(txt)) {
+                    hasMobile = true;
+                    if (el.id !== 'sms') el.setAttribute('data-2fa-mobile', '1');
+                }
+            });
+            return { hasSms, hasMobile, count: items.length };
+        }"""
+        )
+    except Exception as e:
+        print(f"  2FA option detection failed: {e}", file=sys.stderr)
+        return {"hasSms": False, "hasMobile": False, "count": 0}
+
+
+def _choose_2fa_method(body_text, opts):
+    """Decide 'sms' or 'mobile' from the picker text + detected option cards.
+
+    Pure (no browser) so it is unit-testable. On the 2FA picker with neither
+    option positively detected (shadow-DOM text can be missed), default to
+    mobile push — an SMS-capable account surfaces an #sms card we would catch.
+    """
+    text = (body_text or "").lower()
+    has_sms = bool(opts.get("hasSms"))
+    has_mobile = bool(opts.get("hasMobile"))
+    on_picker = "let's make sure it's you" in text or "confirm your identity" in text
+    if not has_sms and not has_mobile and on_picker:
+        return "mobile"
+    if has_sms:
+        return "sms"
+    if has_mobile:
+        return "mobile"
+    return "sms"  # historical default
+
+
+def _handle_mobile_push_2fa(page):
+    """Chase mobile-app push approval flow.
+
+    Click the mobile-app option, signal the caller that phone approval is
+    needed, then poll for the page to leave the 2FA screen (up to 180s) while
+    the user approves on their phone.
+    """
+    print("2FA method: mobile app push. Approve the sign-in on your phone.", file=sys.stderr)
+
+    clicked = page.evaluate(
+        r"""() => {
+        let el = document.querySelector('mds-list-item[data-2fa-mobile="1"]');
+        if (!el) {
+            const items = Array.from(document.querySelectorAll('mds-list-item'));
+            el = items.find(i => i.id !== 'sms') || items[0];
+        }
+        if (el) { el.click(); return true; }
+        return false;
+    }"""
+    )
+    if not clicked:
+        print("  WARNING: could not click the mobile-app 2FA card", file=sys.stderr)
+    time.sleep(3)
+
+    # Signal (same stdout-sentinel pattern as 2FA_CODE_NEEDED).
+    print("MOBILE_APP_APPROVAL_NEEDED", flush=True)
+    print("Waiting up to 180s for you to approve on your phone...", file=sys.stderr)
+
+    start = time.time()
+    while time.time() - start < 180:
+        if is_logged_in(page):
+            break
+        url = (page.url or "").lower()
+        body = page.inner_text("body")[:1500].lower()
+        still_2fa = (
+            "make sure it's you" in body
+            or "confirm your identity" in body
+            or any(k in url for k in ("auth", "identity", "dashboard", "secure"))
+        )
+        if not still_2fa:
+            break  # left the 2FA screen — approval likely accepted
+        time.sleep(3)
+
+    # Trust-this-device prompt (same as the SMS path).
+    body = page.inner_text("body")[:2000].lower()
+    if "remember" in body or "trust" in body or "don't ask" in body:
+        for label in ["Yes", "Remember", "Trust", "Don't ask again"]:
+            btn = page.query_selector(f'button:has-text("{label}")')
+            if btn and btn.is_visible():
+                btn.click()
+                time.sleep(5)
+                break
+
+    logged_in = is_logged_in(page)
+    if not logged_in:
+        print(f"Post-2FA URL: {page.url}", file=sys.stderr)
+    return logged_in
+
+
 def handle_2fa(page):
-    """Handle Chase 2FA flow. Returns True on success."""
+    """Handle Chase 2FA flow (SMS or mobile-app push). Returns True on success."""
     text = page.inner_text("body")[:2000].lower()
 
     is_2fa = (
@@ -233,7 +343,21 @@ def handle_2fa(page):
     if not is_2fa:
         return True
 
-    print("2FA detected. Selecting SMS method...", file=sys.stderr)
+    opts = _detect_2fa_options(page)
+    method = _choose_2fa_method(text, opts)
+    print(
+        f"2FA detected (sms={opts.get('hasSms')}, mobile={opts.get('hasMobile')}) -> {method}",
+        file=sys.stderr,
+    )
+    if method == "mobile":
+        return _handle_mobile_push_2fa(page)
+
+    return _handle_sms_2fa(page)
+
+
+def _handle_sms_2fa(page):
+    """Chase SMS 2FA flow. Returns True on success."""
+    print("2FA method: SMS. Selecting text-message method...", file=sys.stderr)
 
     sms_btn = page.query_selector("mds-list-item#sms")
     if sms_btn:
