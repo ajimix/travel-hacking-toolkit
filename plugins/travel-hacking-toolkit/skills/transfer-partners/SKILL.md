@@ -205,8 +205,12 @@ The instant programs above are unaffected by weekends. For the slow ones — ANA
 ### New loyalty accounts
 A brand-new loyalty account can have its first transfer delayed or fraud-flagged, and some programs enforce a hard waiting period: JAL blocks transfers for ~60 days after linking some partners, and Iberia Plus requires the account to be 90 days old. Open any new account well in advance — weeks, not days — and confirm the account number and name match your card profile exactly before transferring.
 
-### Never transfer speculatively
-No major Western program offers award holds anymore — Aeroplan, United, Delta, and Atmos (Alaska) have all removed them. Because you cannot hold the seat, only transfer when:
+### Hold the seat first when the program allows it
+Many programs let you place an award on hold before paying, which removes the transfer-timing risk entirely. **Load the `award-holds` skill for current per-program rules** before assuming you have to transfer speculatively.
+- **Holds available (hold first, then transfer):** American AAdvantage (24h, free, online self-serve), Lufthansa Miles & More (5 days, phone), Flying Blue (3 days, phone), Cathay Asia Miles (up to 3 days, phone), Turkish Miles & Smiles (2 days), Virgin Atlantic (1-2 days), ANA (2 days, phone), Emirates (1 day, phone), Singapore KrisFlyer (agent discretion). AA's free online hold also works for most partner awards.
+- **No holds — transfer is speculative:** United, Delta, Aeroplan, Atmos (Alaska), British Airways, Iberia, Qatar, Korean, Etihad.
+
+When no hold is available, only transfer once:
 1. You've confirmed the exact award on the airline's own booking site (not just seats.aero)
 2. You're ready to ticket immediately after the miles land
 3. `ComputedLastSeen` on seats.aero is fresh — a stale cache means the seat may already be gone
