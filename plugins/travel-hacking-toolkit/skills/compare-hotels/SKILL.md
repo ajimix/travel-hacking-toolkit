@@ -74,14 +74,14 @@ Run these in parallel where possible. **Never fail silently.**
 ### Step 1: Search All Sources
 
 ```
-PARALLEL GROUP 1 (fast, ~3-5s):
+PARALLEL GROUP 1 (fast — HTTP/API/MCP calls, no browser, ~3-5s):
   - SerpAPI: Google Hotels cash prices
   - Trivago: metasearch across OTAs (web search)
   - LiteAPI: negotiated hotel rates (web search)
-  - Airbnb: vacation rentals in the area
+  - Airbnb: vacation rentals in the area (npx MCP — lightweight scrape, not a browser)
   - Local data: check premium-hotels databases for the city
 
-PARALLEL GROUP 2 (slow, browser/Docker, ~20-45s):
+PARALLEL GROUP 2 (slow — headed browser via Patchright/Xvfb in Docker, ~20-45s):
   - VRBO: whole homes / condos / cabins — vrbo skill (~20s, headed/Docker, behind Akamai; run for whole-home comparisons alongside Airbnb)
   - Chase Travel: --hotel --dest "City" --checkin YYYY-MM-DD --checkout YYYY-MM-DD --json
   - Amex Travel: --hotel --dest "City" --checkin YYYY-MM-DD --checkout YYYY-MM-DD --json
