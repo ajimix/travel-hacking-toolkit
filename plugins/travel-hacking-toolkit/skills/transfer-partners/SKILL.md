@@ -173,34 +173,43 @@ Sometimes the cheapest path involves booking through a different program than th
 
 ## Transfer Timing Risks
 
-**Always flag these before recommending a transfer.** Points transfers are irreversible. Timing problems are the most common cause of lost awards.
+Points transfers are irreversible. Timing is the most common cause of lost awards. Transfer only after you've confirmed the exact award, and only when you're ready to ticket immediately.
 
-### Business day delays
-Most credit card → loyalty program transfers are processed on business days. A transfer submitted on a weekend or public holiday may not land until the next business day — or the business day after a holiday weekend. For US banks: Saturday/Sunday submissions often process Monday or Tuesday. A Friday night submission before a Monday US federal holiday (Memorial Day, Labor Day, etc.) may not land until Tuesday.
+### Most transfers are instant, 24/7 — a handful are not
+Instant transfers post within minutes, any day of the week including weekends and holidays (they run over an API, not a business-day batch). Only the slow programs below are exposed to weekend/holiday delay. Do not assume a transfer will land in time for a same-day booking unless it is on the instant list.
 
-**Rule of thumb:** If seats are at risk of disappearing, transfer before 5pm ET on the last business day before any weekend or holiday — not the night before.
+### Per-program transfer speeds
+| Program | Speed | Notes |
+|---------|-------|-------|
+| Aeroplan | Instant | Any day, via API. |
+| Flying Blue | Instant | Amex and Chase both post instantly. |
+| United MileagePlus | Instant | Chase, Bilt. |
+| Hyatt | Instant | Chase, Bilt. |
+| Virgin Atlantic | Instant | Amex/Chase; rarely up to 48h. |
+| BA / Iberia / Aer Lingus Avios | Instant | Pools instantly across the Avios ecosystem. Lowest-risk transfer. |
+| Qatar Avios | Instant | Balance display can lag — re-login to see it. |
+| Emirates Skywards | Instant | Occasionally 24h from Amex. |
+| JetBlue TrueBlue | Instant | Poor ratios (Cap One 5:3, Amex/Citi 5:4). |
+| Cathay Asia Miles | Instant from Amex; 24h from Capital One | |
+| Etihad Guest | Instant from Capital One | Amex path ended June 30, 2026. |
+| Avianca LifeMiles | Instant from Cap One/Citi | Amex posts instantly but the miles lock until the next day (Colombia time) — do not use the Amex path for a same-day booking. |
+| ANA Mileage Club | ~48 hours (up to 3 days) | Amex is the only path. Never same-day. |
+| Singapore KrisFlyer | Amex instant; Cap One up to 48h; Chase 1-2 days; Citi up to 5 business days | Transfer only after space is confirmed. |
+| Turkish Miles & Smiles | Bilt near-instant; Cap One ~24h; Citi up to 5 business days | No Amex or Chase path. |
+| Marriott Bonvoy | ~36 hours (up to a week) | Slowest mainstream target. Never transfer speculatively. |
+| Atmos Rewards (was Alaska Mileage Plan) | Bilt instant; Marriott 3:1 ~2 days | No Amex, Chase, or Capital One path. |
 
-### Per-program transfer speeds (typical, not guaranteed)
-| Program | Typical speed | Notes |
-|---------|--------------|-------|
-| Aeroplan | Minutes to 2 hours | Usually instant via API. "Next business day" warning is CYA language but can be real on weekends. |
-| Flying Blue | 2-12 hours | Generally fast. |
-| United MileagePlus | Minutes to 2 hours | Usually fast. |
-| Hyatt | Minutes to 2 hours | Usually fast. |
-| Turkish Miles & Smiles | 1-3 days | Slower than most. |
-| Virgin Atlantic | Minutes to 2 hours | Usually fast. |
-| Alaska Mileage Plan | Minutes to 2 hours | Usually fast. |
+### Weekend and holiday delay applies only to the slow programs
+The instant programs above are unaffected by weekends. For the slow ones — ANA, Singapore (via Chase/Citi), Turkish (via Citi), Marriott, and Atmos (via Marriott) — a Saturday, Sunday, or holiday submission can add days. If you must use one and seats are at risk, transfer before 5pm ET on the last business day before the weekend or holiday, not the night before.
 
-### New loyalty account delays
-If the traveler is transferring to a **newly opened loyalty account**, most programs impose a 24-72 hour hold before the account can receive transfers. Opening an Aeroplan account 30 minutes before transferring points is a common mistake.
-
-**Rule:** Open the loyalty account at least 3 days before the transfer if it's a new account. Verify the account number and name match exactly before transferring.
+### New loyalty accounts
+A brand-new loyalty account can have its first transfer delayed or fraud-flagged, and some programs enforce a hard waiting period: JAL blocks transfers for ~60 days after linking some partners, and Iberia Plus requires the account to be 90 days old. Open any new account well in advance — weeks, not days — and confirm the account number and name match your card profile exactly before transferring.
 
 ### Never transfer speculatively
-If no hold is available (Aeroplan, United, Delta, Alaska do not allow holds), only transfer when:
-1. You have confirmed availability on the airline's own booking site
-2. You're prepared to book immediately after the transfer lands
-3. You've checked `ComputedLastSeen` on seats.aero — stale cache means the seat may already be gone
+No major Western program offers award holds anymore — Aeroplan, United, Delta, and Atmos (Alaska) have all removed them. Because you cannot hold the seat, only transfer when:
+1. You've confirmed the exact award on the airline's own booking site (not just seats.aero)
+2. You're ready to ticket immediately after the miles land
+3. `ComputedLastSeen` on seats.aero is fresh — a stale cache means the seat may already be gone
 
 ## Notes
 
