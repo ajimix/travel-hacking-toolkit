@@ -4,6 +4,7 @@ description: Search Sutochno.ru (СУТОЧНО.РУ), a Russian short-term apar
 category: hotels
 summary: Sutochno.ru Russian apartment search via Patchright. Ruble / Mir payment for Georgia / CIS stays.
 api_key: None
+docker_image: ghcr.io/borski/sutochno
 ---
 
 # Sutochno Search

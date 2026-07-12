@@ -203,7 +203,7 @@ Start here: the **orchestration skills** call everything else automatically.
 | **premium-hotels** | Search 4,659 Amex FHR/THC + Chase Edit hotels by city. Stacking opportunities. | None (local data) |
 | **rapidapi** | Booking.com hotel prices. | RapidAPI |
 | **serpapi** | Google Hotels search and destination discovery. | SerpAPI |
-| **sutochno** | Sutochno.ru Russian apartment search via Patchright. Ruble / Mir payment for Georgia / CIS stays. | None |
+| **sutochno** | Sutochno.ru Russian apartment search via Patchright. Ruble / Mir payment for Georgia / CIS stays. Docker: `ghcr.io/borski/sutochno`. | None |
 | **ticketsatwork** | TicketsAtWork (EBG) corporate-perks portal. Hotels, theme park tickets, attractions, live events. Often beats portals by 10-30%. Docker: `ghcr.io/borski/ticketsatwork`. | None (requires TaW account + Patchright) |
 | **vrbo** | VRBO whole-home, condo, and cabin search via Patchright. Complements Airbnb for group stays. Docker: `ghcr.io/borski/vrbo`. | None (requires Patchright) |
 <!-- END: readme:hotels -->
@@ -287,6 +287,7 @@ Five skills run as Docker containers (browser-automated via Patchright), plus a 
 | [`ghcr.io/borski/amex-travel`](https://github.com/borski/travel-hacking-toolkit/pkgs/container/amex-travel) | `amex-travel` | Amex MR portal for flights, hotels, IAP discounts, FHR/THC benefits. Requires Platinum. | [skills/amex-travel](skills/amex-travel/Dockerfile) |
 | [`ghcr.io/borski/chase-travel`](https://github.com/borski/travel-hacking-toolkit/pkgs/container/chase-travel) | `chase-travel` | Chase UR portal for flights, hotels, Points Boost, Edit benefits. Requires Sapphire. | [skills/chase-travel](skills/chase-travel/Dockerfile) |
 | [`ghcr.io/borski/sw-fares`](https://github.com/borski/travel-hacking-toolkit/pkgs/container/sw-fares) | `southwest` | SW fare classes, points pricing, Companion Pass. Change flight price drop monitor. | [skills/southwest](skills/southwest/Dockerfile) |
+| [`ghcr.io/borski/sutochno`](https://github.com/borski/travel-hacking-toolkit/pkgs/container/sutochno) | `sutochno` | Sutochno.ru Russian apartment search via Patchright. Ruble / Mir payment for Georgia / CIS stays. | [skills/sutochno](skills/sutochno/Dockerfile) |
 | [`ghcr.io/borski/ticketsatwork`](https://github.com/borski/travel-hacking-toolkit/pkgs/container/ticketsatwork) | `ticketsatwork` | TicketsAtWork (EBG) corporate-perks portal. Hotels, theme park tickets, attractions, live events. Often beats portals by 10-30%. | [skills/ticketsatwork](skills/ticketsatwork/Dockerfile) |
 | [`ghcr.io/borski/vrbo`](https://github.com/borski/travel-hacking-toolkit/pkgs/container/vrbo) | `vrbo` | VRBO whole-home, condo, and cabin search via Patchright. Complements Airbnb for group stays. | [skills/vrbo](skills/vrbo/Dockerfile) |
 <!-- END: readme:docker -->

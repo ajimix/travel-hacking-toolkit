@@ -16,7 +16,7 @@ chase-travel	portals	Chase UR portal for flights, hotels, Points Boost, Edit ben
 premium-hotels	hotels	Search 4,659 Amex FHR/THC + Chase Edit hotels by city. Stacking opportunities.	None (local data)	
 rapidapi	hotels	Booking.com hotel prices.	RapidAPI	
 serpapi	hotels	Google Hotels search and destination discovery.	SerpAPI	
-sutochno	hotels	Sutochno.ru Russian apartment search via Patchright. Ruble / Mir payment for Georgia / CIS stays.	None	
+sutochno	hotels	Sutochno.ru Russian apartment search via Patchright. Ruble / Mir payment for Georgia / CIS stays.	None	ghcr.io/borski/sutochno
 ticketsatwork	hotels	TicketsAtWork (EBG) corporate-perks portal. Hotels, theme park tickets, attractions, live events. Often beats portals by 10-30%.	None (requires TaW account + Patchright)	ghcr.io/borski/ticketsatwork
 american-airlines	loyalty	AAdvantage balance and elite status. AwardWallet does not support AA.	None (requires Patchright)	ghcr.io/borski/aa-miles-check
 awardwallet	loyalty	All loyalty balances, elite status, history.	AwardWallet Business	
