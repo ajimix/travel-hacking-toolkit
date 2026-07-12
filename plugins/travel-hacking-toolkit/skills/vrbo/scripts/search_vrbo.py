@@ -132,11 +132,26 @@ def is_skeleton(listing):
     return not (listing.get("id") or listing.get("name") or listing.get("url"))
 
 
+def clean_name(name):
+    """Strip VRBO's "Photo gallery for " screen-reader prefix.
+
+    When the title is scraped from a card's image-carousel <h3> (its
+    accessibility label) instead of the listing-title element, the name comes
+    back as "Photo gallery for <real title>". The real title is everything
+    after the prefix, so strip it. No-op for already-clean names.
+    """
+    if not name:
+        return name
+    return re.sub(r"^\s*Photo gallery for\s+", "", name, flags=re.IGNORECASE).strip()
+
+
 def enrich_listings(listings, min_bedrooms=0, limit=0):
     """Filter skeletons, parse prices, apply client-side filters. Pure (no browser)."""
     out = [l for l in listings if not is_skeleton(l)]
     for l in out:
         l.update(parse_price(l.get("priceText")))
+        if l.get("name"):
+            l["name"] = clean_name(l["name"])
     if min_bedrooms:
         out = [
             l for l in out
@@ -230,7 +245,13 @@ EXTRACT_JS = r"""
       const a = card.querySelector('a[href]');
       const href = a ? a.getAttribute('href') : null;
       if (!href) return;  // skeleton / sponsored placeholder — skip
-      const name = (card.querySelector('h3, h4, [data-stid="content-hotel-title"]') || {}).innerText || null;
+      // Prefer the real title element; querySelector on a comma-list returns
+      // the first match in DOM order, and the gallery's h3 ("Photo gallery
+      // for …") precedes the title, so query the title data-stid explicitly
+      // first, then fall back to h3/h4. Python clean_name() strips any residual
+      // "Photo gallery for " prefix as a safety net.
+      const titleEl = card.querySelector('[data-stid="content-hotel-title"]') || card.querySelector('h3, h4');
+      const name = titleEl ? titleEl.innerText : null;
       const priceEl = card.querySelector('[data-stid="price-summary"], [data-test-id="price-summary"], [class*="price"]');
       const priceText = priceEl ? priceEl.innerText.replace(/\s+/g, ' ').trim() : null;
       const ratingEl = card.querySelector('[aria-label*="out of"], [data-stid*="rating"]');

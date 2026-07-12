@@ -151,7 +151,10 @@ structure.
 - **Akamai is IP-rate-limited.** Datacenter / CI / VPN IPs are frequently
   blocked even with Patchright. Run on a residential connection for best
   results. If every retry 429s, the script exits 1 with a clear message — that
-  is an environment block, not a code bug.
+  is an environment block, not a code bug. In practice a home/mobile/hotel-WiFi
+  IP clears the wall, but *rapid repeat* searches from the same IP can start
+  429-ing — space searches a few minutes apart, and don't loop it in a tight
+  batch.
 - **DOM selectors drift.** VRBO/Expedia revise their `data-stid` design system
   periodically. The extractor tries the embedded state blob first (most stable),
   then `data-stid` cards, then a generic anchor scrape. If `extractor` is

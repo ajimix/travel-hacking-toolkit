@@ -129,6 +129,34 @@ class EnrichListingsTests(unittest.TestCase):
         self.assertEqual(len(out), 1)
 
 
+class CleanNameTests(unittest.TestCase):
+    def test_strips_photo_gallery_prefix(self):
+        self.assertEqual(
+            sv.clean_name("Photo gallery for Luxury home with heated pool"),
+            "Luxury home with heated pool",
+        )
+
+    def test_case_insensitive_and_trims(self):
+        self.assertEqual(sv.clean_name("photo gallery for   Cabin 12  "), "Cabin 12")
+
+    def test_leaves_clean_names_untouched(self):
+        self.assertEqual(sv.clean_name("Hideaway by Stylish Stays"), "Hideaway by Stylish Stays")
+
+    def test_handles_none_and_empty(self):
+        self.assertIsNone(sv.clean_name(None))
+        self.assertEqual(sv.clean_name(""), "")
+
+    def test_only_strips_leading_prefix(self):
+        # A property that legitimately mentions the phrase mid-title is preserved.
+        self.assertEqual(sv.clean_name("Home with Photo gallery for guests"),
+                         "Home with Photo gallery for guests")
+
+    def test_enrich_listings_cleans_names(self):
+        listings = [{"id": "p1", "name": "Photo gallery for Beach House", "url": "u", "priceText": None}]
+        out = sv.enrich_listings(listings)
+        self.assertEqual(out[0]["name"], "Beach House")
+
+
 class ExtractJsTests(unittest.TestCase):
     def test_extract_js_defines_three_layers(self):
         # Guard against accidentally deleting a fallback layer during refactors.
@@ -136,6 +164,11 @@ class ExtractJsTests(unittest.TestCase):
         self.assertIn("__PLUS_REDUX_STORE__", js)
         self.assertIn("lodging-card-responsive", js)
         self.assertIn("dom:anchors", js)
+
+    def test_extract_js_prefers_title_over_gallery(self):
+        # The title element must be queried explicitly before the h3 fallback,
+        # otherwise the gallery's "Photo gallery for …" h3 wins.
+        self.assertIn('content-hotel-title', sv.EXTRACT_JS)
 
 
 if __name__ == "__main__":
