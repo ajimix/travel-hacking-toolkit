@@ -460,18 +460,28 @@ def _fill_airport_field(page, selector, code):
     )
     page.wait_for_timeout(300)
     inp.type(code, delay=80)
-    page.wait_for_timeout(2500)  # Wait for autocomplete dropdown
 
-    # Click the first autocomplete suggestion
-    for suggestion_sel in [
-        '[role="option"]:first-child',
-        'li[role="option"]:first-child',
-        ".autocomplete-suggestion:first-child",
-        '[class*="suggestion"]:first-child',
+    # Amex's May 2026 UI no longer confirms the airport on Enter — the
+    # autocomplete listbox option must be explicitly clicked, or the form never
+    # navigates. Wait for the dropdown to render, then click the first option.
+    option_selectors = [
+        'ul[role="listbox"] li[role="option"]',
+        '[role="listbox"] [role="option"]',
+        'li[role="option"]',
+        '[role="option"]',
+        ".autocomplete-suggestion",
+        '[class*="suggestion"]',
         '[data-testid*="suggestion"]',
-        '[class*="dropdown"] li:first-child',
-        '[class*="Dropdown"] li:first-child',
-    ]:
+        '[class*="dropdown"] li',
+        '[class*="Dropdown"] li',
+    ]
+    # Wait (up to 4s) for any option to appear rather than a fixed sleep.
+    try:
+        page.wait_for_selector(", ".join(option_selectors), state="visible", timeout=4000)
+    except Exception:
+        pass  # fall through — maybe slow render or different markup
+
+    for suggestion_sel in option_selectors:
         suggestion = page.query_selector(suggestion_sel)
         if suggestion and suggestion.is_visible():
             suggestion.click()
@@ -479,11 +489,65 @@ def _fill_airport_field(page, selector, code):
             page.wait_for_timeout(500)
             return True
 
-    # Fallback: press Enter to accept first suggestion or use typed value
-    print(f"  No suggestion found, pressing Enter for {code}", file=sys.stderr)
+    # Last resort: press Enter (kept in case a future UI accepts it again).
+    print(f"  No suggestion element found for {code}; pressing Enter as last resort", file=sys.stderr)
     page.keyboard.press("Enter")
     page.wait_for_timeout(500)
     return True
+
+
+def _set_cabin(page, cabin_label, cabin_val):
+    """Set the flight cabin class.
+
+    Amex's May 2026 UI replaced the native ``<select>`` with a custom
+    component, so ``select_option()`` raises "Element is not a <select>".
+    Try the native select first (in case it comes back), then fall back to
+    clicking the custom dropdown open and selecting the option by its label.
+    Returns True on success.
+    """
+    trigger_sel = (
+        '#flight-class-dropdown, select[aria-label="Flight class dropdown"], '
+        '[aria-label="Flight class dropdown"], [data-testid*="flight-class"], '
+        '[class*="flight-class"], [class*="cabin"]'
+    )
+    sel = page.query_selector(trigger_sel)
+    if not sel:
+        print("  WARNING: cabin dropdown not found", file=sys.stderr)
+        return False
+
+    # 1. Native <select> path.
+    try:
+        sel.select_option(cabin_val, timeout=2000)
+        print(f"  Cabin set to {cabin_val} (native select)", file=sys.stderr)
+        page.wait_for_timeout(400)
+        return True
+    except Exception:
+        pass  # not a native <select> — fall through to click-based selection
+
+    # 2. Custom-component path: open the dropdown, click the option by label.
+    try:
+        sel.click()
+        page.wait_for_timeout(400)
+        for opt_sel in [
+            f'[role="option"]:has-text("{cabin_label}")',
+            f'li[role="option"]:has-text("{cabin_label}")',
+            f'[role="menuitem"]:has-text("{cabin_label}")',
+            f'li:has-text("{cabin_label}")',
+            f'button:has-text("{cabin_label}")',
+        ]:
+            opt = page.query_selector(opt_sel)
+            if opt and opt.is_visible():
+                opt.click()
+                print(f"  Cabin set to {cabin_label} (click-based)", file=sys.stderr)
+                page.wait_for_timeout(400)
+                return True
+        print(
+            f"  WARNING: cabin option '{cabin_label}' not found in custom dropdown",
+            file=sys.stderr,
+        )
+    except Exception as e:
+        print(f"  WARNING: Cabin selection failed ({e})", file=sys.stderr)
+    return False
 
 
 def _parse_date(date_str):
@@ -769,16 +833,7 @@ def search_flights_dom(
         "First": "FIRST",
     }
     cabin_val = cabin_map.get(cabin, cabin.upper())
-    sel = page.query_selector(
-        '#flight-class-dropdown, select[aria-label="Flight class dropdown"]'
-    )
-    if sel:
-        try:
-            sel.select_option(cabin_val, timeout=3000)
-            print(f"  Cabin set to {cabin_val}", file=sys.stderr)
-            page.wait_for_timeout(500)
-        except Exception as e:
-            print(f"  WARNING: Cabin select failed ({e})", file=sys.stderr)
+    _set_cabin(page, cabin, cabin_val)
 
     # 3. Origin airport (id based, aria-label is empty on Amex)
     print(f"  Filling origin: {origin}", file=sys.stderr)
