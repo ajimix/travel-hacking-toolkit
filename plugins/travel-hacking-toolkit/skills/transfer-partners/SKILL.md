@@ -48,12 +48,12 @@ Seats.aero source names map to `transfer-partners.json` keys:
 | `united` | `united` | Chase UR (1:1), Bilt (1:1) |
 | `aeroplan` | `aeroplan` | Chase UR (1:1), Amex MR (1:1), Bilt (1:1), Capital One (1:1) |
 | `flyingblue` | `flying_blue` | Chase UR (1:1), Amex MR (1:1), Bilt (1:1), Capital One (1:1), Citi TY (1:1), Wells Fargo (1:1) |
-| `american` | `american` | Citi TY (1:1), Bilt (1:1) |
+| `american` | `american` | Citi TY (1:1) |
 | `alaska` | `alaska_hawaiian` | Bilt (1:1) |
-| `virginatlantic` | `virgin_atlantic` | Chase UR (1:1), Amex MR (1:1), Bilt (1:1), Citi TY (1:1) |
+| `virginatlantic` | `virgin_atlantic` | Chase UR (1:1), Amex MR (1:1), Bilt (1:1), Citi TY (1:1), Wells Fargo (1:1 via Virgin Red) |
 | `delta` | `delta` | Amex MR (1:1) |
 | `emirates` | `emirates` | Bilt (1:1), Amex MR (5:4), Capital One (4:3), Citi TY (5:4) |
-| `etihad` | `etihad` | Amex MR (1:1), Bilt (1:1), Capital One (1:1), Citi TY (1:1) |
+| `etihad` | `etihad` | Bilt (1:1), Capital One (1:1), Citi TY (1:1) |
 | `singapore` | `singapore` | Chase UR (1:1), Amex MR (1:1), Capital One (1:1), Citi TY (1:1) |
 | `jetblue` | `jetblue` | Chase UR (1:1), Citi TY (1:1), Wells Fargo (1:1), Amex MR (250:200), Capital One (5:3) |
 | `qatar` | `qatar` | Amex MR (1:1), Bilt (1:1), Capital One (1:1), Citi TY (1:1) |
