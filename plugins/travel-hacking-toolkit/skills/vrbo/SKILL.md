@@ -4,6 +4,7 @@ description: Search VRBO (Vrbo / Expedia Group) vacation rentals including entir
 category: hotels
 summary: VRBO whole-home, condo, and cabin search via Patchright. Complements Airbnb for group stays.
 api_key: None (requires Patchright)
+docker_image: ghcr.io/borski/vrbo
 ---
 
 # VRBO Search
