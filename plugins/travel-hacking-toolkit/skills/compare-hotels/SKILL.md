@@ -81,10 +81,8 @@ PARALLEL GROUP 1 (fast, ~3-5s):
   - Airbnb: vacation rentals in the area
   - Local data: check premium-hotels databases for the city
 
-PARALLEL GROUP 1b (slower, ~20s, headed/Docker — behind Akamai):
-  - VRBO: whole homes / condos / cabins — vrbo skill (run alongside Airbnb for whole-home comparisons)
-
-PARALLEL GROUP 2 (slow, ~45s, Docker):
+PARALLEL GROUP 2 (slow, browser/Docker, ~20-45s):
+  - VRBO: whole homes / condos / cabins — vrbo skill (~20s, headed/Docker, behind Akamai; run for whole-home comparisons alongside Airbnb)
   - Chase Travel: --hotel --dest "City" --checkin YYYY-MM-DD --checkout YYYY-MM-DD --json
   - Amex Travel: --hotel --dest "City" --checkin YYYY-MM-DD --checkout YYYY-MM-DD --json
 ```
