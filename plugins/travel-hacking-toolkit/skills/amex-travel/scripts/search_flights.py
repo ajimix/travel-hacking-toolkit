@@ -139,27 +139,34 @@ def wait_for_2fa_code(timeout=120):
                 f"2FA hook failed: {e}, falling back to file polling", file=sys.stderr
             )
 
-    # File-based code exchange
-    code_file = "/tmp/amex-2fa-code.txt"
-    try:
-        with open("/tmp/amex-2fa-status.txt", "w") as f:
-            f.write("CODE_NEEDED")
-    except OSError:
-        pass
+    # File-based code exchange. Poll both the Docker bind-mount path
+    # (/tmp/host, via -v /tmp:/tmp/host) and the local path, matching the
+    # chase-travel skill so the host can feed the code into the container.
+    code_files = ["/tmp/host/amex-2fa-code.txt", "/tmp/amex-2fa-code.txt"]
+    for status_path in ("/tmp/host/amex-2fa-status.txt", "/tmp/amex-2fa-status.txt"):
+        try:
+            with open(status_path, "w") as f:
+                f.write("CODE_NEEDED")
+        except OSError:
+            pass
     print("2FA_CODE_NEEDED", flush=True)
-    print("2FA REQUIRED: Write code to /tmp/amex-2fa-code.txt", file=sys.stderr)
+    print(
+        "2FA REQUIRED: write code to /tmp/amex-2fa-code.txt (or /tmp/host/amex-2fa-code.txt in Docker)",
+        file=sys.stderr,
+    )
 
     start = time.time()
     while time.time() - start < timeout:
-        if os.path.exists(code_file):
-            with open(code_file) as f:
-                code = f.read().strip()
-            if code:
-                try:
-                    os.remove(code_file)
-                except OSError:
-                    pass
-                return code
+        for code_file in code_files:
+            if os.path.exists(code_file):
+                with open(code_file) as f:
+                    code = f.read().strip()
+                if code:
+                    try:
+                        os.remove(code_file)
+                    except OSError:
+                        pass
+                    return code
         time.sleep(2)
     return None
 
@@ -461,31 +468,51 @@ def _fill_airport_field(page, selector, code):
     page.wait_for_timeout(300)
     inp.type(code, delay=80)
 
-    # Amex's May 2026 UI no longer confirms the airport on Enter — the
-    # autocomplete listbox option must be explicitly clicked, or the form never
-    # navigates. Wait for the dropdown to render, then click the first option.
-    option_selectors = [
+    # Amex's May 2026 UI no longer confirms the airport on Enter — an
+    # autocomplete option must be clicked. The combobox references its dropdown
+    # via `aria-controls` (e.g. id="suggestionsListbox"). Options are grouped
+    # under category headers ("Airports", "Cities"): the header is a
+    # role="presentation" <li> and the real pick is a role="option" <button>, so
+    # match role="option" specifically (a bare "li"/"button" grabs the header).
+    picked = None
+    for _ in range(12):  # up to ~6s for results to populate
+        picked = page.evaluate(
+            r"""(sel) => {
+            const inp = document.querySelector(sel);
+            const listId = inp && inp.getAttribute('aria-controls');
+            const box = (listId && document.getElementById(listId))
+                     || document.querySelector('[role="listbox"]');
+            if (!box) return null;
+            const cand = box.querySelector('[role="option"]')
+                      || box.querySelector('button:not([role="presentation"]), a[href], [class*="suggestion"], [class*="result"]');
+            if (cand && cand.offsetParent !== null) {
+                cand.click();
+                return (cand.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+            }
+            return null;
+        }""",
+            selector,
+        )
+        if picked:
+            break
+        page.wait_for_timeout(500)
+
+    if picked:
+        print(f"  Picked suggestion for {code}: {picked}", file=sys.stderr)
+        page.wait_for_timeout(500)
+        return True
+
+    # Fallback: static role-based selectors (other/older markup).
+    for suggestion_sel in [
         'ul[role="listbox"] li[role="option"]',
         '[role="listbox"] [role="option"]',
         'li[role="option"]',
         '[role="option"]',
-        ".autocomplete-suggestion",
-        '[class*="suggestion"]',
-        '[data-testid*="suggestion"]',
-        '[class*="dropdown"] li',
-        '[class*="Dropdown"] li',
-    ]
-    # Wait (up to 4s) for any option to appear rather than a fixed sleep.
-    try:
-        page.wait_for_selector(", ".join(option_selectors), state="visible", timeout=4000)
-    except Exception:
-        pass  # fall through — maybe slow render or different markup
-
-    for suggestion_sel in option_selectors:
+    ]:
         suggestion = page.query_selector(suggestion_sel)
         if suggestion and suggestion.is_visible():
             suggestion.click()
-            print(f"  Picked suggestion for {code}", file=sys.stderr)
+            print(f"  Picked suggestion for {code} (static selector)", file=sys.stderr)
             page.wait_for_timeout(500)
             return True
 
