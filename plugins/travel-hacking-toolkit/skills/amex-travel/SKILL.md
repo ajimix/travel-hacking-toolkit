@@ -114,6 +114,10 @@ The script picks up the file automatically and continues login.
 
 After first login with "Add This Device", 2FA is skipped on repeat runs from the same profile.
 
+## Known Limitation: travel-portal login captcha (May 2026)
+
+As of Amex's May 2026 overhaul, submitting a flight search redirects through a **separate travel-portal login gate** (`/account/travel/login`) — even when already signed in to americanexpress.com — and that gate is **captcha-protected**. The search form fills and submits correctly (airports, cabin, dates all work), but the automated login on this gate cannot pass the captcha, so it stays on the login page and results never load. This is an intentional anti-automation wall, not a bug in the skill, and it blocks end-to-end flight *results* retrieval via automation. Verified live (`hasCaptcha: true` on the gate page). Hotel search may be affected similarly. There is no reliable automated workaround; a human must complete that login/captcha interactively.
+
 ## How It Works
 
 ### Flight Search Architecture
