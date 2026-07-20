@@ -115,5 +115,32 @@ class FillAirportFieldTests(unittest.TestCase):
         self.assertEqual(page.keyboard.pressed, ["Enter"])  # last-resort Enter
 
 
+class RaisingPage(FakePage):
+    def query_selector(self, selector):
+        raise Exception("page crashed")
+
+
+class CaptchaDetectionTests(unittest.TestCase):
+    def test_detects_captcha_marker(self):
+        page = FakePage([("captcha", FakeElement())])
+        self.assertTrue(sf._captcha_present(page))
+
+    def test_no_captcha(self):
+        page = FakePage([])
+        self.assertFalse(sf._captcha_present(page))
+
+    def test_page_error_is_not_a_captcha(self):
+        self.assertFalse(sf._captcha_present(RaisingPage([])))
+
+    def test_sentinel_printed_on_stdout(self):
+        import contextlib
+        import io
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            sf._emit_human_login_needed("captcha on the travel portal login gate")
+        self.assertIn("AMEX_HUMAN_LOGIN_NEEDED", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

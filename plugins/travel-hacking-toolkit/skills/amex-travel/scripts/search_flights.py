@@ -258,6 +258,34 @@ def handle_2fa(page):
     return is_logged_in(page)
 
 
+CAPTCHA_MARKERS = (
+    'iframe[src*="captcha" i], iframe[title*="captcha" i], '
+    '[id*="captcha" i], [class*="captcha" i], [data-callback*="captcha" i]'
+)
+
+
+def _captcha_present(page):
+    try:
+        return bool(page.query_selector(CAPTCHA_MARKERS))
+    except Exception:
+        return False
+
+
+def _emit_human_login_needed(reason):
+    """Signal that login hit a wall only a human can pass (see SKILL.md)."""
+    try:
+        with open("/tmp/amex-2fa-status.txt", "w") as f:
+            f.write("HUMAN_LOGIN_NEEDED")
+    except OSError:
+        pass
+    print("AMEX_HUMAN_LOGIN_NEEDED", flush=True)
+    print(f"HUMAN LOGIN REQUIRED: {reason}.", file=sys.stderr)
+    print(
+        "Refresh the session on your local machine (not Docker):", file=sys.stderr
+    )
+    print("  python3 scripts/refresh_login.py", file=sys.stderr)
+
+
 def login(page, context, username, password, cookie_path):
     if inject_cookies(context, cookie_path):
         page.goto(AMEX_FLIGHTS_URL, timeout=30000)
@@ -321,6 +349,8 @@ def login(page, context, username, password, cookie_path):
         save_cookies(context, cookie_path)
         return True
 
+    if _captcha_present(page):
+        _emit_human_login_needed("captcha on the Amex login page")
     return False
 
 
@@ -430,6 +460,8 @@ def _handle_travel_login_gate(page, username=None, password=None):
         return True
 
     print(f"  Still on login page: {url[:100]}", file=sys.stderr)
+    if _captcha_present(page):
+        _emit_human_login_needed("captcha on the travel portal login gate")
     return False
 
 
