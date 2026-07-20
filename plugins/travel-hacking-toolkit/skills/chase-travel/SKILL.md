@@ -93,11 +93,13 @@ python3 scripts/record_search.py
 
 ## 2FA Flow
 
-Chase uses SMS for 2FA. On first login, you must complete 2FA manually. After that, device trust persists (2FA skipped on subsequent runs from the same profile).
+Chase uses SMS **or** mobile-app push for 2FA (some accounts offer only push). On first login, you must complete 2FA manually. After that, device trust persists (2FA skipped on subsequent runs from the same profile). The script auto-detects which method the account offers and takes the matching path.
 
-**How it works:** When 2FA is triggered, the script prints `2FA_CODE_NEEDED` to stdout and `2FA REQUIRED` to stderr, then polls for the code. It will wait up to 3 minutes.
+**How it works:** When 2FA is triggered, the script prints one of two sentinels to stdout, then polls for up to 3 minutes:
+- `2FA_CODE_NEEDED` — SMS. Chase texted a code; provide it (below).
+- `MOBILE_APP_APPROVAL_NEEDED` — mobile-app push. There is **no code**; the user approves the sign-in in their Chase mobile app, and the script continues once the page clears.
 
-**For agents:** When you see `2FA_CODE_NEEDED` in the script output, **ask the user** for the SMS code Chase just sent to their phone. Once they provide it, write it to the code file:
+**For agents (SMS):** When you see `2FA_CODE_NEEDED`, **ask the user** for the SMS code Chase just sent to their phone. Once they provide it, write it to the code file:
 
 ```bash
 echo "12345678" > /tmp/chase-2fa-code.txt
@@ -105,11 +107,21 @@ echo "12345678" > /tmp/chase-2fa-code.txt
 
 The script picks up the file automatically and continues login.
 
-**Command hook (optional, for full automation):** Set `CHASE_2FA_COMMAND` to a command that blocks until it has the code, then prints it to stdout. The script runs this instead of polling the file.
+**For agents (mobile push):** When you see `MOBILE_APP_APPROVAL_NEEDED`, **tell the user to approve the sign-in in their Chase mobile app** — there is no code to enter. The script polls for up to 3 minutes for the approval to land, then continues.
+
+**Command hook (optional, for full automation):** Set `CHASE_2FA_COMMAND` to a command that blocks until it has the code, then prints it to stdout. The script runs this instead of polling the file. (Applies to the SMS path only.)
 
 **Docker:** Use `-v /tmp:/tmp/host` to share the temp directory. The script checks both `/tmp/host/chase-2fa-code.txt` and `/tmp/chase-2fa-code.txt`.
 
 After first successful login with device trust, 2FA is skipped on repeat runs.
+
+## Credentials Must Be Resolved Values
+
+`CHASE_USERNAME`/`CHASE_PASSWORD` must contain the **actual** username and password when they reach this script. If you keep secrets in a secret manager, resolve the references into the environment before launching (most managers ship an exec/run wrapper for exactly this).
+
+An unresolved reference (a literal `scheme://vault/item` placeholder) gets typed into the login form, and Chase answers "We can't find that username and password. Try again." — which is easy to misread as bot detection. (It isn't: fresh automated logins from Docker work fine with real credentials, verified live July 2026, including when saved cookies have expired.)
+
+The script fails fast on both forms of this mistake: it prints **`CHASE_BAD_CREDENTIALS`** to stdout (and writes `BAD_CREDENTIALS` to the 2FA status file) when a credential still looks like a secret reference, or when Chase reports the username/password as not found. **For agents:** don't retry on this sentinel — fix how credentials are injected, then rerun.
 
 ## How It Works
 
