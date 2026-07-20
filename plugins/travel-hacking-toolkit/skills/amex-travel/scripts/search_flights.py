@@ -139,27 +139,34 @@ def wait_for_2fa_code(timeout=120):
                 f"2FA hook failed: {e}, falling back to file polling", file=sys.stderr
             )
 
-    # File-based code exchange
-    code_file = "/tmp/amex-2fa-code.txt"
-    try:
-        with open("/tmp/amex-2fa-status.txt", "w") as f:
-            f.write("CODE_NEEDED")
-    except OSError:
-        pass
+    # File-based code exchange. Poll both the Docker bind-mount path
+    # (/tmp/host, via -v /tmp:/tmp/host) and the local path, matching the
+    # chase-travel skill so the host can feed the code into the container.
+    code_files = ["/tmp/host/amex-2fa-code.txt", "/tmp/amex-2fa-code.txt"]
+    for status_path in ("/tmp/host/amex-2fa-status.txt", "/tmp/amex-2fa-status.txt"):
+        try:
+            with open(status_path, "w") as f:
+                f.write("CODE_NEEDED")
+        except OSError:
+            pass
     print("2FA_CODE_NEEDED", flush=True)
-    print("2FA REQUIRED: Write code to /tmp/amex-2fa-code.txt", file=sys.stderr)
+    print(
+        "2FA REQUIRED: write code to /tmp/amex-2fa-code.txt (or /tmp/host/amex-2fa-code.txt in Docker)",
+        file=sys.stderr,
+    )
 
     start = time.time()
     while time.time() - start < timeout:
-        if os.path.exists(code_file):
-            with open(code_file) as f:
-                code = f.read().strip()
-            if code:
-                try:
-                    os.remove(code_file)
-                except OSError:
-                    pass
-                return code
+        for code_file in code_files:
+            if os.path.exists(code_file):
+                with open(code_file) as f:
+                    code = f.read().strip()
+                if code:
+                    try:
+                        os.remove(code_file)
+                    except OSError:
+                        pass
+                    return code
         time.sleep(2)
     return None
 
@@ -251,7 +258,65 @@ def handle_2fa(page):
     return is_logged_in(page)
 
 
+def _unresolved_secret(value):
+    """True if a credential looks like an unresolved secret-manager reference
+    (e.g. a scheme://vault/item/field placeholder) rather than a real value."""
+    return "://" in (value or "").strip().strip("\"'")
+
+
+def _emit_bad_credentials(reason):
+    """Fail loud on bad credentials so login failures aren't misread as walls."""
+    try:
+        with open("/tmp/amex-2fa-status.txt", "w") as f:
+            f.write("BAD_CREDENTIALS")
+    except OSError:
+        pass
+    print("AMEX_BAD_CREDENTIALS", flush=True)
+    print(f"CREDENTIAL ERROR: {reason}.", file=sys.stderr)
+    print(
+        "AMEX_USERNAME/AMEX_PASSWORD must contain the real values when they "
+        "reach this script. If you keep secrets in a secret manager, resolve "
+        "the references into the environment before launching.",
+        file=sys.stderr,
+    )
+
+
+CAPTCHA_MARKERS = (
+    'iframe[src*="captcha" i], iframe[title*="captcha" i], '
+    '[id*="captcha" i], [class*="captcha" i], [data-callback*="captcha" i]'
+)
+
+
+def _captcha_present(page):
+    try:
+        return bool(page.query_selector(CAPTCHA_MARKERS))
+    except Exception:
+        return False
+
+
+def _emit_human_login_needed(reason):
+    """Signal that login hit a wall only a human can pass (see SKILL.md)."""
+    try:
+        with open("/tmp/amex-2fa-status.txt", "w") as f:
+            f.write("HUMAN_LOGIN_NEEDED")
+    except OSError:
+        pass
+    print("AMEX_HUMAN_LOGIN_NEEDED", flush=True)
+    print(f"HUMAN LOGIN REQUIRED: {reason}.", file=sys.stderr)
+    print(
+        "Refresh the session on your local machine (not Docker):", file=sys.stderr
+    )
+    print("  python3 scripts/refresh_login.py", file=sys.stderr)
+
+
 def login(page, context, username, password, cookie_path):
+    for name, val in (("AMEX_USERNAME", username), ("AMEX_PASSWORD", password)):
+        if _unresolved_secret(val):
+            _emit_bad_credentials(
+                f"{name} is an unresolved secret reference, not a real value"
+            )
+            return False
+
     if inject_cookies(context, cookie_path):
         page.goto(AMEX_FLIGHTS_URL, timeout=30000)
         time.sleep(8)
@@ -314,6 +379,8 @@ def login(page, context, username, password, cookie_path):
         save_cookies(context, cookie_path)
         return True
 
+    if _captcha_present(page):
+        _emit_human_login_needed("captcha on the Amex login page")
     return False
 
 
@@ -347,6 +414,13 @@ def _handle_travel_login_gate(page, username=None, password=None):
     if not username or not password:
         print("  ERROR: No credentials for travel login gate", file=sys.stderr)
         return False
+
+    for name, val in (("AMEX_USERNAME", username), ("AMEX_PASSWORD", password)):
+        if _unresolved_secret(val):
+            _emit_bad_credentials(
+                f"{name} is an unresolved secret reference, not a real value"
+            )
+            return False
 
     # Fill username
     filled_user = False
@@ -423,6 +497,36 @@ def _handle_travel_login_gate(page, username=None, password=None):
         return True
 
     print(f"  Still on login page: {url[:100]}", file=sys.stderr)
+    try:
+        text = " ".join(page.inner_text("body")[:800].split())
+        print(f"  Gate page text: {text[:400]}", file=sys.stderr)
+        diag = page.evaluate(
+            """() => {
+                const u = document.querySelector('#eliloUserID');
+                const p = document.querySelector('#eliloPassword');
+                const s = document.querySelector('#loginSubmit');
+                const forms = document.querySelectorAll('form').length;
+                const alerts = [...document.querySelectorAll(
+                    '[role="alert"], [class*="error" i], [id*="error" i]')]
+                    .map(e => (e.innerText || '').trim()).filter(Boolean).slice(0, 3);
+                const btns = [...document.querySelectorAll('button')]
+                    .map(b => ({t: (b.innerText || '').trim().slice(0, 30),
+                                id: b.id, type: b.type}))
+                    .filter(b => /log in|sign in|continue/i.test(b.t)).slice(0, 5);
+                return {userLen: u && u.value ? u.value.length : -1,
+                        passLen: p && p.value ? p.value.length : -1,
+                        hasLoginSubmit: !!s, forms, alerts, btns};
+            }"""
+        )
+        print(f"  Gate diag: {diag}", file=sys.stderr)
+    except Exception:
+        pass
+    if _captcha_present(page):
+        _emit_human_login_needed("captcha on the travel portal login gate")
+    else:
+        _emit_human_login_needed(
+            "travel portal login gate did not accept the automated login"
+        )
     return False
 
 
@@ -460,30 +564,114 @@ def _fill_airport_field(page, selector, code):
     )
     page.wait_for_timeout(300)
     inp.type(code, delay=80)
-    page.wait_for_timeout(2500)  # Wait for autocomplete dropdown
 
-    # Click the first autocomplete suggestion
+    # Amex's May 2026 UI no longer confirms the airport on Enter — an
+    # autocomplete option must be clicked. The combobox references its dropdown
+    # via `aria-controls` (e.g. id="suggestionsListbox"). Options are grouped
+    # under category headers ("Airports", "Cities"): the header is a
+    # role="presentation" <li> and the real pick is a role="option" <button>, so
+    # match role="option" specifically (a bare "li"/"button" grabs the header).
+    picked = None
+    for _ in range(12):  # up to ~6s for results to populate
+        picked = page.evaluate(
+            r"""(sel) => {
+            const inp = document.querySelector(sel);
+            const listId = inp && inp.getAttribute('aria-controls');
+            const box = (listId && document.getElementById(listId))
+                     || document.querySelector('[role="listbox"]');
+            if (!box) return null;
+            const cand = box.querySelector('[role="option"]')
+                      || box.querySelector('button:not([role="presentation"]), a[href], [class*="suggestion"], [class*="result"]');
+            if (cand && cand.offsetParent !== null) {
+                cand.click();
+                return (cand.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+            }
+            return null;
+        }""",
+            selector,
+        )
+        if picked:
+            break
+        page.wait_for_timeout(500)
+
+    if picked:
+        print(f"  Picked suggestion for {code}: {picked}", file=sys.stderr)
+        page.wait_for_timeout(500)
+        return True
+
+    # Fallback: static role-based selectors (other/older markup).
     for suggestion_sel in [
-        '[role="option"]:first-child',
-        'li[role="option"]:first-child',
-        ".autocomplete-suggestion:first-child",
-        '[class*="suggestion"]:first-child',
-        '[data-testid*="suggestion"]',
-        '[class*="dropdown"] li:first-child',
-        '[class*="Dropdown"] li:first-child',
+        'ul[role="listbox"] li[role="option"]',
+        '[role="listbox"] [role="option"]',
+        'li[role="option"]',
+        '[role="option"]',
     ]:
         suggestion = page.query_selector(suggestion_sel)
         if suggestion and suggestion.is_visible():
             suggestion.click()
-            print(f"  Picked suggestion for {code}", file=sys.stderr)
+            print(f"  Picked suggestion for {code} (static selector)", file=sys.stderr)
             page.wait_for_timeout(500)
             return True
 
-    # Fallback: press Enter to accept first suggestion or use typed value
-    print(f"  No suggestion found, pressing Enter for {code}", file=sys.stderr)
+    # Last resort: press Enter (kept in case a future UI accepts it again).
+    print(f"  No suggestion element found for {code}; pressing Enter as last resort", file=sys.stderr)
     page.keyboard.press("Enter")
     page.wait_for_timeout(500)
     return True
+
+
+def _set_cabin(page, cabin_label, cabin_val):
+    """Set the flight cabin class.
+
+    Amex's May 2026 UI replaced the native ``<select>`` with a custom
+    component, so ``select_option()`` raises "Element is not a <select>".
+    Try the native select first (in case it comes back), then fall back to
+    clicking the custom dropdown open and selecting the option by its label.
+    Returns True on success.
+    """
+    trigger_sel = (
+        '#flight-class-dropdown, select[aria-label="Flight class dropdown"], '
+        '[aria-label="Flight class dropdown"], [data-testid*="flight-class"], '
+        '[class*="flight-class"], [class*="cabin"]'
+    )
+    sel = page.query_selector(trigger_sel)
+    if not sel:
+        print("  WARNING: cabin dropdown not found", file=sys.stderr)
+        return False
+
+    # 1. Native <select> path.
+    try:
+        sel.select_option(cabin_val, timeout=2000)
+        print(f"  Cabin set to {cabin_val} (native select)", file=sys.stderr)
+        page.wait_for_timeout(400)
+        return True
+    except Exception:
+        pass  # not a native <select> — fall through to click-based selection
+
+    # 2. Custom-component path: open the dropdown, click the option by label.
+    try:
+        sel.click()
+        page.wait_for_timeout(400)
+        for opt_sel in [
+            f'[role="option"]:has-text("{cabin_label}")',
+            f'li[role="option"]:has-text("{cabin_label}")',
+            f'[role="menuitem"]:has-text("{cabin_label}")',
+            f'li:has-text("{cabin_label}")',
+            f'button:has-text("{cabin_label}")',
+        ]:
+            opt = page.query_selector(opt_sel)
+            if opt and opt.is_visible():
+                opt.click()
+                print(f"  Cabin set to {cabin_label} (click-based)", file=sys.stderr)
+                page.wait_for_timeout(400)
+                return True
+        print(
+            f"  WARNING: cabin option '{cabin_label}' not found in custom dropdown",
+            file=sys.stderr,
+        )
+    except Exception as e:
+        print(f"  WARNING: Cabin selection failed ({e})", file=sys.stderr)
+    return False
 
 
 def _parse_date(date_str):
@@ -769,16 +957,7 @@ def search_flights_dom(
         "First": "FIRST",
     }
     cabin_val = cabin_map.get(cabin, cabin.upper())
-    sel = page.query_selector(
-        '#flight-class-dropdown, select[aria-label="Flight class dropdown"]'
-    )
-    if sel:
-        try:
-            sel.select_option(cabin_val, timeout=3000)
-            print(f"  Cabin set to {cabin_val}", file=sys.stderr)
-            page.wait_for_timeout(500)
-        except Exception as e:
-            print(f"  WARNING: Cabin select failed ({e})", file=sys.stderr)
+    _set_cabin(page, cabin, cabin_val)
 
     # 3. Origin airport (id based, aria-label is empty on Amex)
     print(f"  Filling origin: {origin}", file=sys.stderr)
@@ -841,7 +1020,12 @@ def search_flights_dom(
                     file=sys.stderr,
                 )
             # The travel portal has its own login gate. Try to fill credentials.
-            _handle_travel_login_gate(page, username=username, password=password)
+            if not _handle_travel_login_gate(
+                page, username=username, password=password
+            ):
+                # Gate rejected the automated login (sentinel already emitted);
+                # results cannot load, so don't burn minutes hunting appData.
+                return None
             login_handled = True
             page.wait_for_timeout(5000)
             continue
@@ -851,7 +1035,15 @@ def search_flights_dom(
     # 9. Wait for React hydration
     page.wait_for_timeout(10000)
 
-    # 10. Extract appData
+    # 10. Extract results: new Next.js DOM first, legacy appData fallback
+    cards = extract_offer_cards(page)
+    if cards:
+        flights = [_interpret_offer_card(c) for c in cards]
+        print(
+            f"Extracted {len(flights)} flights from offer cards (new UI)",
+            file=sys.stderr,
+        )
+        return {"__dom_flights__": flights}
     return extract_app_data(page)
 
 
@@ -953,7 +1145,10 @@ def search_hotels_dom(
                 "  Login interstitial detected. Attempting re-auth...",
                 file=sys.stderr,
             )
-            _handle_travel_login_gate(page, username=username, password=password)
+            if not _handle_travel_login_gate(
+                page, username=username, password=password
+            ):
+                return None
             login_handled = True
             page.wait_for_timeout(5000)
             continue
@@ -1345,7 +1540,49 @@ def extract_app_data(page, timeout=90):
         time.sleep(5)
 
     # Final fallback: parse from HTML
-    return _extract_app_data_from_html(page)
+    data = _extract_app_data_from_html(page)
+    if data is None:
+        _dump_results_diagnostics(page)
+    return data
+
+
+def _dump_results_diagnostics(page):
+    """When no appData is found, report what the results page DOES expose and
+    save its HTML so a new parser can be developed offline."""
+    try:
+        diag = page.evaluate(
+            """() => {
+                const winKeys = Object.keys(window).filter(
+                    k => /data|state|store|initial|next|redux|apollo/i.test(k)
+                ).slice(0, 20);
+                const nd = document.getElementById('__NEXT_DATA__');
+                const counts = {};
+                for (const sel of ['[data-testid]', '[data-testid*="flight" i]',
+                                   '[data-testid*="result" i]',
+                                   '[data-testid*="offer" i]',
+                                   '[data-testid*="card" i]']) {
+                    counts[sel] = document.querySelectorAll(sel).length;
+                }
+                const testids = [...new Set(
+                    [...document.querySelectorAll('[data-testid]')]
+                        .map(e => e.getAttribute('data-testid')))].slice(0, 40);
+                return {url: location.href.slice(0, 120), winKeys,
+                        nextDataLen: nd ? nd.textContent.length : 0,
+                        counts, testids};
+            }"""
+        )
+        print(f"Results diag: {json.dumps(diag)[:1500]}", file=sys.stderr)
+    except Exception as e:
+        print(f"Results diag failed: {e}", file=sys.stderr)
+    for out_dir in ("/tmp/host", "/tmp"):
+        try:
+            path = os.path.join(out_dir, "amex-flight-results.html")
+            with open(path, "w") as f:
+                f.write(page.content())
+            print(f"Saved results HTML to {path}", file=sys.stderr)
+            break
+        except Exception:
+            continue
 
 
 def _extract_app_data_from_html(page):
@@ -1456,6 +1693,173 @@ def parse_flights(app_data):
         flights.append(flight)
 
     return flights
+
+
+# ============================================================
+# New travel.americanexpress.com results page (Next.js, May 2026)
+# ============================================================
+
+# The May 2026 overhaul moved flight results to travel.americanexpress.com,
+# a Next.js app with NO window.appData. Results live in the DOM as
+# [data-testid="offer-card-wrapper"] cards with richly named sub-testids.
+
+OFFER_CARD_JS = """() =>
+    [...document.querySelectorAll('[data-testid="offer-card-wrapper"]')].map(card => {
+        const m = {};
+        for (const el of card.querySelectorAll('[data-testid]')) {
+            const id = el.getAttribute('data-testid');
+            if (!(id in m)) {
+                m[id] = (el.innerText || '').replace(/\\s+/g, ' ').trim();
+            }
+        }
+        return m;
+    })
+"""
+
+
+def extract_offer_cards(page, timeout=45):
+    """Return a list of {testid: text} maps, one per offer card (new UI)."""
+    for _ in range(max(1, timeout // 3)):
+        try:
+            cards = page.evaluate(OFFER_CARD_JS)
+            if cards:
+                return cards
+        except Exception:
+            pass
+        time.sleep(3)
+    return []
+
+
+def _tid_prefix(m, suffix):
+    """Find a testid ending in `suffix` and return its prefix (e.g.
+    'SFO-departure-airport-code' -> 'SFO')."""
+    for k in m:
+        if k.endswith(suffix):
+            return k[: -len(suffix)]
+    return ""
+
+
+def _money(text):
+    mm = re.search(r"\$\s*([\d,]+(?:\.\d+)?)", text or "")
+    return float(mm.group(1).replace(",", "")) if mm else None
+
+
+def _points_number(text):
+    """First plausible points number NOT preceded by a dollar sign."""
+    for mm in re.finditer(r"(\d{1,3}(?:,\d{3})+|\d{4,})", text or ""):
+        start = mm.start()
+        prefix = (text or "")[max(0, start - 2) : start]
+        if "$" in prefix or "." in prefix:
+            continue
+        return int(mm.group(1).replace(",", ""))
+    return None
+
+
+def _interpret_offer_card(m):
+    """Turn one offer card's {testid: text} map into the flight dict shape
+    that parse_flights() produces, so downstream output code is shared."""
+    airline = ""
+    for k in m:
+        if k.endswith("-airline-code"):
+            airline = m[k] or k[: -len("-airline-code")]
+            break
+    carrier = _tid_prefix(m, "-airline-img")
+    origin = _tid_prefix(m, "-departure-airport-code")
+    dest = _tid_prefix(m, "-arrival-airport-code")
+
+    stop_text = (m.get("offer-card-stop") or "").lower()
+    if "non" in stop_text:
+        stops = 0
+    else:
+        sm = re.search(r"(\d+)", stop_text)
+        stops = int(sm.group(1)) if sm else 0
+
+    avg = m.get("flight-average-price", "")
+    total = m.get("departure-selection-flight-total-price", "")
+    pts_text = m.get("departure-selection-flight-total-price-points", "")
+    strike = m.get("offer-card-strike-through", "")
+    insider = m.get("offer-card-insider-fares", "")
+
+    was_cash = None
+    now_cash = None
+    wm = re.search(r"was\s+\$\s*([\d,.]+)", total)
+    nm = re.search(r"now it'?s\s+\$\s*([\d,.]+)", total)
+    if wm:
+        was_cash = float(wm.group(1).replace(",", ""))
+    if nm:
+        now_cash = float(nm.group(1).replace(",", ""))
+    if now_cash is None:
+        now_cash = _money(avg)
+    if now_cash is None:
+        now_cash = _money(insider)
+    if was_cash is None:
+        was_cash = _money(strike)
+
+    was_pts = None
+    now_pts = None
+    wp = re.search(r"was\s+([\d,]+)\s+points", pts_text)
+    np_ = re.search(r"now it'?s\s+([\d,]+)", pts_text)
+    if wp:
+        was_pts = int(wp.group(1).replace(",", ""))
+    if np_:
+        now_pts = int(np_.group(1).replace(",", ""))
+    if now_pts is None:
+        now_pts = _points_number(avg)
+    if was_pts is None:
+        was_pts = _points_number(strike)
+
+    is_iap = any(k.startswith("private-fare-banner-PEP") for k in m) and bool(
+        was_cash and now_cash and was_cash > now_cash
+    )
+
+    now_entry = {
+        "cash_usd": now_cash or 0,
+        "cash_cents": int(round((now_cash or 0) * 100)),
+        "points": now_pts or 0,
+    }
+    pricing = {}
+    if is_iap and was_cash:
+        pricing["PUB"] = {
+            "cash_usd": was_cash,
+            "cash_cents": int(round(was_cash * 100)),
+            "points": was_pts or 0,
+        }
+        pricing["PEP"] = now_entry
+    else:
+        pricing["PUB"] = now_entry
+
+    duration = m.get("offer-card-flight-duration", "")
+    return {
+        "airline": airline,
+        "duration": duration,
+        "duration_seconds": 0,
+        "stops": stops,
+        "stop_cities": [],
+        "segments": [
+            {
+                "flight_number": "",
+                "origin": origin,
+                "destination": dest,
+                "depart": m.get("departure-date", ""),
+                "arrive": m.get("arrival-data", ""),
+                "duration": duration,
+                "airline_code": carrier,
+                "operating_code": carrier,
+                "equipment": "",
+                "cabin": "",
+                "amenities": [],
+            }
+        ],
+        "seats_left": 0,
+        "has_iap": is_iap,
+        "has_platinum": is_iap,
+        "insider_fare": bool(insider),
+        "points_discount": bool(was_pts and now_pts and was_pts > now_pts),
+        "mixed_cabin": False,
+        "cash_usd": now_cash or 0,
+        "points": now_pts or 0,
+        "pricing": pricing,
+    }
 
 
 def format_duration(iso_dur):
@@ -2345,12 +2749,15 @@ def main():
             _save_page_html(page, args.save_html)
 
         if not app_data:
-            print("ERROR: Could not extract appData", file=sys.stderr)
+            print("ERROR: Could not extract flight results", file=sys.stderr)
             save_cookies(ctx, cookie_path)
             ctx.close()
             sys.exit(1)
 
-        flights = parse_flights(app_data)
+        if "__dom_flights__" in app_data:
+            flights = app_data["__dom_flights__"]
+        else:
+            flights = parse_flights(app_data)
 
         if args.json_output:
             output = {
