@@ -437,8 +437,48 @@ def _handle_sms_2fa(page):
     return logged_in
 
 
+def _unresolved_secret(value):
+    """True if a credential looks like an unresolved secret-manager reference
+    (e.g. a scheme://vault/item/field placeholder) rather than a real value."""
+    return "://" in (value or "").strip().strip("\"'")
+
+
+def _is_credential_rejection(body_text):
+    """Chase's response when the submitted username/password is wrong."""
+    t = (body_text or "").lower()
+    return (
+        "can't find that username and password" in t
+        or "can’t find that username and password" in t
+    )
+
+
+def _emit_bad_credentials(reason):
+    """Fail loud on bad credentials so the caller doesn't chase phantom bot-blocks."""
+    for status_path in ["/tmp/host/chase-2fa-status.txt", "/tmp/chase-2fa-status.txt"]:
+        try:
+            with open(status_path, "w") as f:
+                f.write("BAD_CREDENTIALS")
+        except OSError:
+            pass
+    print("CHASE_BAD_CREDENTIALS", flush=True)
+    print(f"CREDENTIAL ERROR: {reason}.", file=sys.stderr)
+    print(
+        "CHASE_USERNAME/CHASE_PASSWORD must contain the real values when they "
+        "reach this script. If you keep secrets in a secret manager, resolve "
+        "the references into the environment before launching.",
+        file=sys.stderr,
+    )
+
+
 def login(page, context, username, password, cookie_path):
     """Log into Chase. Returns True on success."""
+    for name, val in (("CHASE_USERNAME", username), ("CHASE_PASSWORD", password)):
+        if _unresolved_secret(val):
+            _emit_bad_credentials(
+                f"{name} is an unresolved secret reference, not a real value"
+            )
+            return False
+
     in_docker = os.path.exists("/.dockerenv") or os.environ.get("DOCKER", "")
 
     # Try cookie injection first
@@ -478,6 +518,15 @@ def login(page, context, username, password, cookie_path):
         page.click("button#signin-button")
 
     time.sleep(12)
+
+    try:
+        if _is_credential_rejection(page.inner_text("body")[:3000]):
+            _emit_bad_credentials(
+                "Chase rejected the username/password as not found"
+            )
+            return False
+    except Exception:
+        pass
 
     if not handle_2fa(page):
         return False

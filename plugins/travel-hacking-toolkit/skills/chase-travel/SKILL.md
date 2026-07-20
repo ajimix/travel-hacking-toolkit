@@ -115,6 +115,14 @@ The script picks up the file automatically and continues login.
 
 After first successful login with device trust, 2FA is skipped on repeat runs.
 
+## Credentials Must Be Resolved Values
+
+`CHASE_USERNAME`/`CHASE_PASSWORD` must contain the **actual** username and password when they reach this script. If you keep secrets in a secret manager, resolve the references into the environment before launching (most managers ship an exec/run wrapper for exactly this).
+
+An unresolved reference (a literal `scheme://vault/item` placeholder) gets typed into the login form, and Chase answers "We can't find that username and password. Try again." — which is easy to misread as bot detection. (It isn't: fresh automated logins from Docker work fine with real credentials, verified live July 2026, including when saved cookies have expired.)
+
+The script fails fast on both forms of this mistake: it prints **`CHASE_BAD_CREDENTIALS`** to stdout (and writes `BAD_CREDENTIALS` to the 2FA status file) when a credential still looks like a secret reference, or when Chase reports the username/password as not found. **For agents:** don't retry on this sentinel — fix how credentials are injected, then rerun.
+
 ## How It Works
 
 ### Flight Search Architecture
