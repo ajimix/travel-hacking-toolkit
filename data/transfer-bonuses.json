@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "last_updated": "2026-07-13",
+    "last_updated": "2026-07-20",
     "staleness_days": 7,
     "description": "Active credit card transfer bonuses. Each bonus shows the current promotional ratio along with primary sources verifying it. Refreshed weekly via scripts/refresh-transfer-bonuses.py which scrapes Frequent Miler and cross-checks against AwardWallet. Confidence levels per Research Integrity Protocol: VERIFIED = both FM and AwardWallet agree; LIKELY = only FM; UNVERIFIED = inferred or single mention without strong source.",
     "primary_sources": [
@@ -21,50 +21,18 @@
   },
   "active_bonuses": [
     {
-      "id": "chase_ur_to_virgin_atlantic_30pct_2026_07",
+      "id": "chase_ur_to_ihg_one_rewards_100pct_2026_07",
       "from_program": "chase_ur",
       "from_display": "Chase Ultimate Rewards",
-      "to_program": "virgin_atlantic",
-      "to_display": "Virgin Atlantic Flying Club",
-      "bonus_pct": 30,
-      "ratio": 1.3,
-      "start_date": "2026-06-09",
-      "end_date_inclusive": "2026-07-14",
+      "to_program": "ihg_one_rewards",
+      "to_display": "IHG",
+      "bonus_pct": 100,
+      "ratio": 2.0,
+      "start_date": "2026-07-15",
+      "end_date_inclusive": "2026-07-30",
       "confidence": "VERIFIED",
       "sources": [
-        "https://frequentmiler.com/chase-ultimate-rewards-virgin-atlantic-30-percent-transfer-bonus/",
-        "https://awardwallet.com/news/credit-card-transfer-bonuses/"
-      ]
-    },
-    {
-      "id": "amex_membership_rewards_to_hilton_honors_20pct_2026_07",
-      "from_program": "amex_membership_rewards",
-      "from_display": "Amex Membership Rewards",
-      "to_program": "hilton_honors",
-      "to_display": "Hilton",
-      "bonus_pct": 20,
-      "ratio": 1.2,
-      "start_date": "2026-07-01",
-      "end_date_inclusive": "2026-07-14",
-      "confidence": "VERIFIED",
-      "sources": [
-        "https://frequentmiler.com/20-percent-transfer-bonus-american-express-membership-rewards-hilton-honors/",
-        "https://awardwallet.com/news/credit-card-transfer-bonuses/"
-      ]
-    },
-    {
-      "id": "amex_membership_rewards_to_avianca_lifemiles_15pct_2026_07",
-      "from_program": "amex_membership_rewards",
-      "from_display": "Amex Membership Rewards",
-      "to_program": "avianca_lifemiles",
-      "to_display": "Avianca LifeMiles",
-      "bonus_pct": 15,
-      "ratio": 1.15,
-      "start_date": "2026-06-15",
-      "end_date_inclusive": "2026-07-15",
-      "confidence": "VERIFIED",
-      "sources": [
-        "https://frequentmiler.com/15-transfer-bonus-from-amex-membership-rewards-to-avianca-lifemiles/",
+        "https://frequentmiler.com/chase-is-offering-a-70-100-transfer-bonus-to-ihg-one-rewards-give-it-a-miss/",
         "https://awardwallet.com/news/credit-card-transfer-bonuses/"
       ]
     },
@@ -83,9 +51,49 @@
         "https://frequentmiler.com/30-percent-transfer-bonus-american-express-membership-rewards-virgin-atlantic/",
         "https://awardwallet.com/news/credit-card-transfer-bonuses/"
       ]
+    },
+    {
+      "id": "rove_to_qantas_50pct_2026_08",
+      "from_program": "rove",
+      "from_display": "Rove Miles",
+      "to_program": "qantas",
+      "to_display": "Qantas Frequent Flyer",
+      "bonus_pct": 50,
+      "ratio": 1.5,
+      "start_date": "2026-07-15",
+      "end_date_inclusive": "2026-08-14",
+      "confidence": "LIKELY",
+      "sources": [
+        "https://frequentmiler.com/rove-adds-qantas-as-transfer-partner-launches-with-50-transfer-bonus/"
+      ]
     }
   ],
-  "expired_recently": [],
+  "expired_recently": [
+    {
+      "id": "chase_ur_to_virgin_atlantic_30pct_2026_07",
+      "from_display": "Chase Ultimate Rewards",
+      "to_display": "Virgin Atlantic Flying Club",
+      "bonus_pct": 30,
+      "end_date_inclusive": "2026-07-14",
+      "note": "Recently expired (auto-moved from active list)."
+    },
+    {
+      "id": "amex_membership_rewards_to_hilton_honors_20pct_2026_07",
+      "from_display": "Amex Membership Rewards",
+      "to_display": "Hilton",
+      "bonus_pct": 20,
+      "end_date_inclusive": "2026-07-14",
+      "note": "Recently expired (auto-moved from active list)."
+    },
+    {
+      "id": "amex_membership_rewards_to_avianca_lifemiles_15pct_2026_07",
+      "from_display": "Amex Membership Rewards",
+      "to_display": "Avianca LifeMiles",
+      "bonus_pct": 15,
+      "end_date_inclusive": "2026-07-15",
+      "note": "Recently expired (auto-moved from active list)."
+    }
+  ],
   "frequent_recurring_bonuses_to_watch": {
     "_note": "These bonuses tend to repeat several times per year based on FM's historical data. If your travel timeline is flexible, waiting for one of these to recur is often worthwhile.",
     "amex_mr_to_avios": {
