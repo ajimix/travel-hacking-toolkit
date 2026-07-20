@@ -116,11 +116,11 @@ After first login with "Add This Device", 2FA is skipped on repeat runs from the
 
 ## Known Limitation: travel-portal login captcha (May 2026)
 
-As of Amex's May 2026 overhaul, submitting a flight search redirects through a **separate travel-portal login gate** (`/account/travel/login`) — even when already signed in to americanexpress.com — and that gate is **captcha-protected**. The search form fills and submits correctly (airports, cabin, dates all work), but the automated login on this gate cannot pass the captcha, so it stays on the login page and results never load. This is an intentional anti-automation wall, not a bug in the skill, and it blocks end-to-end flight *results* retrieval via automation. Verified live (`hasCaptcha: true` on the gate page). Hotel search may be affected similarly.
+As of Amex's May 2026 overhaul, submitting a flight search redirects through a **separate travel-portal login gate** (`/account/travel/login`) — even when already signed in to americanexpress.com — and that gate is **captcha-protected**. The search form fills and submits correctly (airports, cabin, dates all work), but the gate silently swallows the automated login: verified live July 2026 with correct credentials — fields hold the right values after submit, the form's own `#loginSubmit` is clicked, no error is rendered, captcha markers are present in the DOM, and the page never advances. This is an intentional anti-automation wall, not a bug in the skill, and it blocks end-to-end flight *results* retrieval via automation. Hotel search may be affected similarly. (On gate failure the script prints a `Gate diag:` line with field/button/alert state so future breakage is diagnosable from logs.)
 
 **The wall only exists on fresh logins.** With a warm saved session (valid cookies + trusted device), the gate passes automatically and searches work end to end. So the recovery is a one-time human step, not a dead end:
 
-1. When the script hits the wall, it prints **`AMEX_HUMAN_LOGIN_NEEDED`** to stdout (and writes `HUMAN_LOGIN_NEEDED` to `/tmp/amex-2fa-status.txt`). **For agents:** stop retrying and tell the user to run the refresh script.
+1. When the gate rejects the automated login (captcha or otherwise), the script prints **`AMEX_HUMAN_LOGIN_NEEDED`** to stdout (and writes `HUMAN_LOGIN_NEEDED` to `/tmp/amex-2fa-status.txt`). **For agents:** stop retrying and tell the user to run the refresh script. (A separate sentinel, **`AMEX_BAD_CREDENTIALS`**, means the credential env vars contained an unresolved secret-manager reference instead of real values — fix the credential injection, not the login.)
 2. The user runs, **locally, not in Docker**:
 
    ```bash

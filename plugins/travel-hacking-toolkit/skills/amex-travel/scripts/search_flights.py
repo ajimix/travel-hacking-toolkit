@@ -258,6 +258,29 @@ def handle_2fa(page):
     return is_logged_in(page)
 
 
+def _unresolved_secret(value):
+    """True if a credential looks like an unresolved secret-manager reference
+    (e.g. a scheme://vault/item/field placeholder) rather than a real value."""
+    return "://" in (value or "").strip().strip("\"'")
+
+
+def _emit_bad_credentials(reason):
+    """Fail loud on bad credentials so login failures aren't misread as walls."""
+    try:
+        with open("/tmp/amex-2fa-status.txt", "w") as f:
+            f.write("BAD_CREDENTIALS")
+    except OSError:
+        pass
+    print("AMEX_BAD_CREDENTIALS", flush=True)
+    print(f"CREDENTIAL ERROR: {reason}.", file=sys.stderr)
+    print(
+        "AMEX_USERNAME/AMEX_PASSWORD must contain the real values when they "
+        "reach this script. If you keep secrets in a secret manager, resolve "
+        "the references into the environment before launching.",
+        file=sys.stderr,
+    )
+
+
 CAPTCHA_MARKERS = (
     'iframe[src*="captcha" i], iframe[title*="captcha" i], '
     '[id*="captcha" i], [class*="captcha" i], [data-callback*="captcha" i]'
@@ -287,6 +310,13 @@ def _emit_human_login_needed(reason):
 
 
 def login(page, context, username, password, cookie_path):
+    for name, val in (("AMEX_USERNAME", username), ("AMEX_PASSWORD", password)):
+        if _unresolved_secret(val):
+            _emit_bad_credentials(
+                f"{name} is an unresolved secret reference, not a real value"
+            )
+            return False
+
     if inject_cookies(context, cookie_path):
         page.goto(AMEX_FLIGHTS_URL, timeout=30000)
         time.sleep(8)
@@ -385,6 +415,13 @@ def _handle_travel_login_gate(page, username=None, password=None):
         print("  ERROR: No credentials for travel login gate", file=sys.stderr)
         return False
 
+    for name, val in (("AMEX_USERNAME", username), ("AMEX_PASSWORD", password)):
+        if _unresolved_secret(val):
+            _emit_bad_credentials(
+                f"{name} is an unresolved secret reference, not a real value"
+            )
+            return False
+
     # Fill username
     filled_user = False
     for sel in [
@@ -460,8 +497,36 @@ def _handle_travel_login_gate(page, username=None, password=None):
         return True
 
     print(f"  Still on login page: {url[:100]}", file=sys.stderr)
+    try:
+        text = " ".join(page.inner_text("body")[:800].split())
+        print(f"  Gate page text: {text[:400]}", file=sys.stderr)
+        diag = page.evaluate(
+            """() => {
+                const u = document.querySelector('#eliloUserID');
+                const p = document.querySelector('#eliloPassword');
+                const s = document.querySelector('#loginSubmit');
+                const forms = document.querySelectorAll('form').length;
+                const alerts = [...document.querySelectorAll(
+                    '[role="alert"], [class*="error" i], [id*="error" i]')]
+                    .map(e => (e.innerText || '').trim()).filter(Boolean).slice(0, 3);
+                const btns = [...document.querySelectorAll('button')]
+                    .map(b => ({t: (b.innerText || '').trim().slice(0, 30),
+                                id: b.id, type: b.type}))
+                    .filter(b => /log in|sign in|continue/i.test(b.t)).slice(0, 5);
+                return {userLen: u && u.value ? u.value.length : -1,
+                        passLen: p && p.value ? p.value.length : -1,
+                        hasLoginSubmit: !!s, forms, alerts, btns};
+            }"""
+        )
+        print(f"  Gate diag: {diag}", file=sys.stderr)
+    except Exception:
+        pass
     if _captcha_present(page):
         _emit_human_login_needed("captcha on the travel portal login gate")
+    else:
+        _emit_human_login_needed(
+            "travel portal login gate did not accept the automated login"
+        )
     return False
 
 

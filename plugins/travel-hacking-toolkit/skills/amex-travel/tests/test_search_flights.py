@@ -142,5 +142,23 @@ class CaptchaDetectionTests(unittest.TestCase):
         self.assertIn("AMEX_HUMAN_LOGIN_NEEDED", out.getvalue())
 
 
+class CredentialGuardTests(unittest.TestCase):
+    def test_unresolved_secret_reference(self):
+        self.assertTrue(sf._unresolved_secret("secret://Vault/item/username"))
+        self.assertTrue(sf._unresolved_secret('"vault://item/username"'))
+        self.assertFalse(sf._unresolved_secret("actual_username"))
+        self.assertFalse(sf._unresolved_secret(""))
+        self.assertFalse(sf._unresolved_secret(None))
+
+    def test_sentinel_printed_on_stdout(self):
+        import contextlib
+        import io
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            sf._emit_bad_credentials("AMEX_USERNAME is an unresolved secret reference")
+        self.assertIn("AMEX_BAD_CREDENTIALS", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
