@@ -1020,7 +1020,12 @@ def search_flights_dom(
                     file=sys.stderr,
                 )
             # The travel portal has its own login gate. Try to fill credentials.
-            _handle_travel_login_gate(page, username=username, password=password)
+            if not _handle_travel_login_gate(
+                page, username=username, password=password
+            ):
+                # Gate rejected the automated login (sentinel already emitted);
+                # results cannot load, so don't burn minutes hunting appData.
+                return None
             login_handled = True
             page.wait_for_timeout(5000)
             continue
@@ -1030,7 +1035,15 @@ def search_flights_dom(
     # 9. Wait for React hydration
     page.wait_for_timeout(10000)
 
-    # 10. Extract appData
+    # 10. Extract results: new Next.js DOM first, legacy appData fallback
+    cards = extract_offer_cards(page)
+    if cards:
+        flights = [_interpret_offer_card(c) for c in cards]
+        print(
+            f"Extracted {len(flights)} flights from offer cards (new UI)",
+            file=sys.stderr,
+        )
+        return {"__dom_flights__": flights}
     return extract_app_data(page)
 
 
@@ -1132,7 +1145,10 @@ def search_hotels_dom(
                 "  Login interstitial detected. Attempting re-auth...",
                 file=sys.stderr,
             )
-            _handle_travel_login_gate(page, username=username, password=password)
+            if not _handle_travel_login_gate(
+                page, username=username, password=password
+            ):
+                return None
             login_handled = True
             page.wait_for_timeout(5000)
             continue
@@ -1524,7 +1540,49 @@ def extract_app_data(page, timeout=90):
         time.sleep(5)
 
     # Final fallback: parse from HTML
-    return _extract_app_data_from_html(page)
+    data = _extract_app_data_from_html(page)
+    if data is None:
+        _dump_results_diagnostics(page)
+    return data
+
+
+def _dump_results_diagnostics(page):
+    """When no appData is found, report what the results page DOES expose and
+    save its HTML so a new parser can be developed offline."""
+    try:
+        diag = page.evaluate(
+            """() => {
+                const winKeys = Object.keys(window).filter(
+                    k => /data|state|store|initial|next|redux|apollo/i.test(k)
+                ).slice(0, 20);
+                const nd = document.getElementById('__NEXT_DATA__');
+                const counts = {};
+                for (const sel of ['[data-testid]', '[data-testid*="flight" i]',
+                                   '[data-testid*="result" i]',
+                                   '[data-testid*="offer" i]',
+                                   '[data-testid*="card" i]']) {
+                    counts[sel] = document.querySelectorAll(sel).length;
+                }
+                const testids = [...new Set(
+                    [...document.querySelectorAll('[data-testid]')]
+                        .map(e => e.getAttribute('data-testid')))].slice(0, 40);
+                return {url: location.href.slice(0, 120), winKeys,
+                        nextDataLen: nd ? nd.textContent.length : 0,
+                        counts, testids};
+            }"""
+        )
+        print(f"Results diag: {json.dumps(diag)[:1500]}", file=sys.stderr)
+    except Exception as e:
+        print(f"Results diag failed: {e}", file=sys.stderr)
+    for out_dir in ("/tmp/host", "/tmp"):
+        try:
+            path = os.path.join(out_dir, "amex-flight-results.html")
+            with open(path, "w") as f:
+                f.write(page.content())
+            print(f"Saved results HTML to {path}", file=sys.stderr)
+            break
+        except Exception:
+            continue
 
 
 def _extract_app_data_from_html(page):
@@ -1635,6 +1693,173 @@ def parse_flights(app_data):
         flights.append(flight)
 
     return flights
+
+
+# ============================================================
+# New travel.americanexpress.com results page (Next.js, May 2026)
+# ============================================================
+
+# The May 2026 overhaul moved flight results to travel.americanexpress.com,
+# a Next.js app with NO window.appData. Results live in the DOM as
+# [data-testid="offer-card-wrapper"] cards with richly named sub-testids.
+
+OFFER_CARD_JS = """() =>
+    [...document.querySelectorAll('[data-testid="offer-card-wrapper"]')].map(card => {
+        const m = {};
+        for (const el of card.querySelectorAll('[data-testid]')) {
+            const id = el.getAttribute('data-testid');
+            if (!(id in m)) {
+                m[id] = (el.innerText || '').replace(/\\s+/g, ' ').trim();
+            }
+        }
+        return m;
+    })
+"""
+
+
+def extract_offer_cards(page, timeout=45):
+    """Return a list of {testid: text} maps, one per offer card (new UI)."""
+    for _ in range(max(1, timeout // 3)):
+        try:
+            cards = page.evaluate(OFFER_CARD_JS)
+            if cards:
+                return cards
+        except Exception:
+            pass
+        time.sleep(3)
+    return []
+
+
+def _tid_prefix(m, suffix):
+    """Find a testid ending in `suffix` and return its prefix (e.g.
+    'SFO-departure-airport-code' -> 'SFO')."""
+    for k in m:
+        if k.endswith(suffix):
+            return k[: -len(suffix)]
+    return ""
+
+
+def _money(text):
+    mm = re.search(r"\$\s*([\d,]+(?:\.\d+)?)", text or "")
+    return float(mm.group(1).replace(",", "")) if mm else None
+
+
+def _points_number(text):
+    """First plausible points number NOT preceded by a dollar sign."""
+    for mm in re.finditer(r"(\d{1,3}(?:,\d{3})+|\d{4,})", text or ""):
+        start = mm.start()
+        prefix = (text or "")[max(0, start - 2) : start]
+        if "$" in prefix or "." in prefix:
+            continue
+        return int(mm.group(1).replace(",", ""))
+    return None
+
+
+def _interpret_offer_card(m):
+    """Turn one offer card's {testid: text} map into the flight dict shape
+    that parse_flights() produces, so downstream output code is shared."""
+    airline = ""
+    for k in m:
+        if k.endswith("-airline-code"):
+            airline = m[k] or k[: -len("-airline-code")]
+            break
+    carrier = _tid_prefix(m, "-airline-img")
+    origin = _tid_prefix(m, "-departure-airport-code")
+    dest = _tid_prefix(m, "-arrival-airport-code")
+
+    stop_text = (m.get("offer-card-stop") or "").lower()
+    if "non" in stop_text:
+        stops = 0
+    else:
+        sm = re.search(r"(\d+)", stop_text)
+        stops = int(sm.group(1)) if sm else 0
+
+    avg = m.get("flight-average-price", "")
+    total = m.get("departure-selection-flight-total-price", "")
+    pts_text = m.get("departure-selection-flight-total-price-points", "")
+    strike = m.get("offer-card-strike-through", "")
+    insider = m.get("offer-card-insider-fares", "")
+
+    was_cash = None
+    now_cash = None
+    wm = re.search(r"was\s+\$\s*([\d,.]+)", total)
+    nm = re.search(r"now it'?s\s+\$\s*([\d,.]+)", total)
+    if wm:
+        was_cash = float(wm.group(1).replace(",", ""))
+    if nm:
+        now_cash = float(nm.group(1).replace(",", ""))
+    if now_cash is None:
+        now_cash = _money(avg)
+    if now_cash is None:
+        now_cash = _money(insider)
+    if was_cash is None:
+        was_cash = _money(strike)
+
+    was_pts = None
+    now_pts = None
+    wp = re.search(r"was\s+([\d,]+)\s+points", pts_text)
+    np_ = re.search(r"now it'?s\s+([\d,]+)", pts_text)
+    if wp:
+        was_pts = int(wp.group(1).replace(",", ""))
+    if np_:
+        now_pts = int(np_.group(1).replace(",", ""))
+    if now_pts is None:
+        now_pts = _points_number(avg)
+    if was_pts is None:
+        was_pts = _points_number(strike)
+
+    is_iap = any(k.startswith("private-fare-banner-PEP") for k in m) and bool(
+        was_cash and now_cash and was_cash > now_cash
+    )
+
+    now_entry = {
+        "cash_usd": now_cash or 0,
+        "cash_cents": int(round((now_cash or 0) * 100)),
+        "points": now_pts or 0,
+    }
+    pricing = {}
+    if is_iap and was_cash:
+        pricing["PUB"] = {
+            "cash_usd": was_cash,
+            "cash_cents": int(round(was_cash * 100)),
+            "points": was_pts or 0,
+        }
+        pricing["PEP"] = now_entry
+    else:
+        pricing["PUB"] = now_entry
+
+    duration = m.get("offer-card-flight-duration", "")
+    return {
+        "airline": airline,
+        "duration": duration,
+        "duration_seconds": 0,
+        "stops": stops,
+        "stop_cities": [],
+        "segments": [
+            {
+                "flight_number": "",
+                "origin": origin,
+                "destination": dest,
+                "depart": m.get("departure-date", ""),
+                "arrive": m.get("arrival-data", ""),
+                "duration": duration,
+                "airline_code": carrier,
+                "operating_code": carrier,
+                "equipment": "",
+                "cabin": "",
+                "amenities": [],
+            }
+        ],
+        "seats_left": 0,
+        "has_iap": is_iap,
+        "has_platinum": is_iap,
+        "insider_fare": bool(insider),
+        "points_discount": bool(was_pts and now_pts and was_pts > now_pts),
+        "mixed_cabin": False,
+        "cash_usd": now_cash or 0,
+        "points": now_pts or 0,
+        "pricing": pricing,
+    }
 
 
 def format_duration(iso_dur):
@@ -2524,12 +2749,15 @@ def main():
             _save_page_html(page, args.save_html)
 
         if not app_data:
-            print("ERROR: Could not extract appData", file=sys.stderr)
+            print("ERROR: Could not extract flight results", file=sys.stderr)
             save_cookies(ctx, cookie_path)
             ctx.close()
             sys.exit(1)
 
-        flights = parse_flights(app_data)
+        if "__dom_flights__" in app_data:
+            flights = app_data["__dom_flights__"]
+        else:
+            flights = parse_flights(app_data)
 
         if args.json_output:
             output = {

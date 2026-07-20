@@ -22,12 +22,15 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from search_flights import (  # noqa: E402
-    AMEX_FLIGHTS_URL,
     get_cookie_path,
     get_profile_dir,
-    is_logged_in,
     save_cookies,
 )
+
+# The captcha-protected travel-portal gate itself — NOT the flights page.
+# Being logged in to americanexpress.com does not pass this gate; the human
+# must complete the login HERE so the travel-session cookies get minted.
+AMEX_TRAVEL_GATE_URL = "https://www.americanexpress.com/en-us/account/travel/login"
 
 
 def main():
@@ -72,37 +75,62 @@ def main():
             )
 
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
-        page.goto(AMEX_FLIGHTS_URL, timeout=60000)
+        page.goto(AMEX_TRAVEL_GATE_URL, timeout=60000)
+        time.sleep(3)
+
+        if "/account/travel/login" not in page.url.lower():
+            # Gate didn't even render — travel session is already warm.
+            save_cookies(ctx, cookie_path)
+            print("AMEX_SESSION_REFRESHED", flush=True)
+            print(
+                "Travel session already warm (gate skipped). "
+                f"Profile: {profile_dir}",
+                file=sys.stderr,
+            )
+            ctx.close()
+            return
 
         print("", file=sys.stderr)
-        print("A Chrome window is open on the Amex travel portal.", file=sys.stderr)
         print(
-            "Log in yourself: password, captcha, email code, and choose "
-            '"Add This Device" so 2FA is skipped next time.',
+            "A Chrome window is open on the TRAVEL LOGIN GATE.", file=sys.stderr
+        )
+        print(
+            "Log in on this page yourself: user ID, password, any captcha or "
+            'email code, and choose "Add This Device" if offered.',
             file=sys.stderr,
         )
         print(
-            f"Waiting up to {args.timeout}s for the logged-in travel page...",
+            f"Waiting up to {args.timeout}s for the gate to clear...",
             file=sys.stderr,
         )
 
         deadline = time.time() + args.timeout
         while time.time() < deadline:
             try:
-                if "/login" not in page.url.lower() and is_logged_in(page):
+                if not ctx.pages:
+                    print("ERROR: Browser window closed.", file=sys.stderr)
+                    sys.exit(1)
+                # Success: ANY tab that is on travel content and off the gate.
+                cleared = False
+                for pg in ctx.pages:
+                    u = pg.url.lower()
+                    if "/account/travel/login" in u or u == "about:blank":
+                        continue
+                    if "travel" in u and "/login" not in u:
+                        cleared = True
+                        break
+                if cleared:
+                    time.sleep(5)  # let the destination page set its cookies
                     save_cookies(ctx, cookie_path)
                     print("AMEX_SESSION_REFRESHED", flush=True)
                     print(
-                        f"Session saved. Profile: {profile_dir}", file=sys.stderr
+                        f"Gate cleared. Session saved. Profile: {profile_dir}",
+                        file=sys.stderr,
                     )
                     ctx.close()
                     return
             except Exception:
-                # Page mid-navigation or window closed; keep polling
-                if not ctx.pages:
-                    print("ERROR: Browser window closed.", file=sys.stderr)
-                    sys.exit(1)
-                page = ctx.pages[0]
+                pass  # page mid-navigation; keep polling
             time.sleep(2)
 
         print("ERROR: Timed out waiting for login.", file=sys.stderr)

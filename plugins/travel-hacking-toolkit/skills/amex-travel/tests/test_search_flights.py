@@ -142,6 +142,77 @@ class CaptchaDetectionTests(unittest.TestCase):
         self.assertIn("AMEX_HUMAN_LOGIN_NEEDED", out.getvalue())
 
 
+# Real card maps captured live from the new travel.americanexpress.com
+# results page (July 2026), trimmed to the fields the interpreter reads.
+ALASKA_INSIDER_CARD = {
+    "flight-route-container": "Economy Flight type Flight length 1 hour 31 minutes",
+    "offer-card-stop": "Non stop Non-stop",
+    "offer-card-flight-duration": "1h 31m",
+    "AS-airline-img": "Airline company",
+    "Alaska Airlines, Inc.-airline-code": "Alaska Airlines, Inc.",
+    "departure-date": "3:51 pm",
+    "SFO-departure-airport-code": "SFO",
+    "arrival-data": "5:22 pm",
+    "LAX-arrival-airport-code": "LAX",
+    "flight-average-price": "Total Price From 11,441*",
+    "departure-selection-flight-total-price": "was",
+    "offer-card-insider-fares": "$125.40",
+    "departure-selection-flight-total-price-points": (
+        "or was 12,540 points, now it's 11,441, *, footnote Membership Rewards points"
+    ),
+    "offer-card-strike-through": "12,540",
+}
+
+DELTA_IAP_CARD = {
+    "private-fare-banner-PEP12,EXP20-program-subheader": (
+        "Enjoy special access to Platinum Member Airfares through Amex Travel."
+    ),
+    "offer-card-stop": "Non stop Non-stop",
+    "offer-card-flight-duration": "1h 32m",
+    "DL-airline-img": "Airline company",
+    "Delta Air Lines-airline-code": "Delta Air Lines",
+    "departure-date": "11:54 am",
+    "SFO-departure-airport-code": "SFO",
+    "arrival-data": "1:26 pm",
+    "LAX-arrival-airport-code": "LAX",
+    "flight-average-price": "Total Price From $121.01 12,101",
+    "departure-selection-flight-total-price": "It was $125.40 now it's $121.01 One Way Total",
+    "offer-card-strike-through": "$125.40 12,540",
+}
+
+
+class OfferCardInterpreterTests(unittest.TestCase):
+    def test_alaska_insider_fare(self):
+        f = sf._interpret_offer_card(ALASKA_INSIDER_CARD)
+        self.assertEqual(f["airline"], "Alaska Airlines, Inc.")
+        self.assertEqual(f["segments"][0]["origin"], "SFO")
+        self.assertEqual(f["segments"][0]["destination"], "LAX")
+        self.assertEqual(f["segments"][0]["airline_code"], "AS")
+        self.assertEqual(f["stops"], 0)
+        self.assertEqual(f["cash_usd"], 125.40)
+        self.assertEqual(f["points"], 11441)          # discounted insider points
+        self.assertTrue(f["insider_fare"])
+        self.assertTrue(f["points_discount"])          # 12,540 -> 11,441
+        self.assertFalse(f["has_iap"])                 # no cash discount = not IAP
+
+    def test_delta_iap_fare(self):
+        f = sf._interpret_offer_card(DELTA_IAP_CARD)
+        self.assertEqual(f["airline"], "Delta Air Lines")
+        self.assertTrue(f["has_iap"])
+        self.assertEqual(f["cash_usd"], 121.01)        # IAP (PEP) price
+        self.assertEqual(f["pricing"]["PUB"]["cash_usd"], 125.40)
+        self.assertEqual(f["pricing"]["PEP"]["cash_usd"], 121.01)
+        self.assertEqual(f["points"], 12101)
+        self.assertEqual(f["duration"], "1h 32m")
+
+    def test_sparse_card_does_not_crash(self):
+        f = sf._interpret_offer_card({"offer-card-flight-duration": "2h 5m"})
+        self.assertEqual(f["cash_usd"], 0)
+        self.assertEqual(f["points"], 0)
+        self.assertEqual(f["stops"], 0)
+        self.assertFalse(f["has_iap"])
+
+
 class CredentialGuardTests(unittest.TestCase):
     def test_unresolved_secret_reference(self):
         self.assertTrue(sf._unresolved_secret("secret://Vault/item/username"))
