@@ -8,11 +8,17 @@
 #   2. Every skill has valid frontmatter (name + description)
 #   3. CLAUDE.md is under the 40k threshold that triggers Claude Code's warning
 #   4. All Docker images exist on ghcr.io (and are pullable without auth)
-#   5. Data files within their declared TTL
+#   5. Data files within their declared TTL (staleness WARNS, does not fail;
+#      a missing _meta or unparseable date still fails)
 #   6. README.md and llms.txt match the auto-generated tables (no drift)
 #   7. Claude plugin manifest + marketplace.json validate via `claude plugin validate`
 #   8. agents/travel-hacker.md is in sync with CLAUDE.md and has required frontmatter
 #   9. Plugin components are present (skills/, .mcp.json valid JSON)
+#  10. All scripts/*.py compile and scripts/*.sh parse; all data/*.json valid JSON
+#  11. No expired transfer bonus is still marked active (WARNS)
+#
+# On macOS without `timeout`, coreutils' gtimeout or a perl shim is used
+# automatically (see the timeout shim near the top).
 #
 # What it checks (agent invocations, slower):
 #   - Each agent (codex, claude, opencode) starts cleanly from the toolkit
@@ -31,6 +37,35 @@ set -uo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR"
 
+# --- Portable `timeout` ---
+# Stock macOS ships no `timeout`. Prefer coreutils' gtimeout, otherwise fall
+# back to a small perl shim that preserves GNU semantics (exit 124 on timeout)
+# so the rc==124 checks further down keep working. No-op where `timeout` exists.
+if ! command -v timeout >/dev/null 2>&1; then
+  if command -v gtimeout >/dev/null 2>&1; then
+    timeout() { gtimeout "$@"; }
+  else
+    timeout() {
+      local dur="$1"; shift
+      dur="${dur%[smhd]}"   # tolerate a unit suffix like 30s
+      perl -e '
+        my $dur = shift @ARGV;
+        my $pid = fork();
+        die "fork failed: $!" unless defined $pid;
+        if ($pid == 0) { exec { $ARGV[0] } @ARGV or exit 127; }
+        my $timed_out = 0;
+        local $SIG{ALRM} = sub { $timed_out = 1; kill "TERM", $pid; };
+        alarm $dur;
+        waitpid($pid, 0);
+        my $status = $?;
+        alarm 0;
+        exit 124 if $timed_out;
+        exit(($status & 127) ? 128 + ($status & 127) : ($status >> 8));
+      ' "$dur" "$@"
+    }
+  fi
+fi
+
 QUICK=0
 AGENTS_ONLY=0
 for arg in "$@"; do
@@ -42,9 +77,11 @@ done
 
 PASS=0
 FAIL=0
+WARN=0
 
 ok()   { echo "  [ok] $*"; PASS=$((PASS+1)); }
 fail() { echo "  [X] $*";  FAIL=$((FAIL+1)); }
+warn() { echo "  [!] $*";  WARN=$((WARN+1)); }
 skip() { echo "  [-] $*"; }
 
 # --- Static checks ---
@@ -138,7 +175,13 @@ PY
     else
       bad_images=0
       missing_list=""
-      for image in patchright-docker sw-fares aa-miles-check chase-travel amex-travel ticketsatwork; do
+      # Derive the image list from skill-meta.tsv's docker_image column (basename)
+      # plus the base image, so a new containerized skill is covered automatically
+      # once it declares docker_image — no need to hand-edit this list.
+      skill_images=$(awk -F'\t' 'NR>1 && $5 ~ /ghcr\.io\/borski\// {n=$5; sub(/.*\//,"",n); print n}' scripts/skill-meta.tsv | sort -u)
+      all_images="patchright-docker $skill_images"
+      n_images=$(echo $all_images | wc -w | xargs)
+      for image in $all_images; do
         out=$(docker manifest inspect "ghcr.io/borski/$image:latest" 2>&1 >/dev/null) || true
         if [ -n "$out" ]; then
           # Re-classify network/auth errors so we don't fail the test for them
@@ -152,7 +195,7 @@ PY
         fi
       done
       if [ "$bad_images" -eq 0 ]; then
-        ok "all 6 Docker images exist on ghcr.io"
+        ok "all $n_images Docker images exist on ghcr.io"
       else
         fail "$bad_images Docker image(s) genuinely missing on ghcr.io:$missing_list"
       fi
@@ -162,11 +205,21 @@ PY
   fi
 
   # 6. Data file freshness
+  # Staleness from calendar passage is a WARNING, not a failure: a data file
+  # aging past its TTL should not turn CI red on an unrelated change. Refresh
+  # the data to clear it. Structural problems (missing _meta, unparseable date)
+  # are still hard failures — those are real defects, not staleness.
   if bash scripts/check-data-freshness.sh >/tmp/freshness.out 2>&1; then
     ok "all data files within their declared TTL"
   else
-    fail "stale data files (run: python3 scripts/refresh-hotel-data.py for hotels)"
-    grep -E "STALE|MISSING_META|BAD_DATE" /tmp/freshness.out | sed 's/^/      /'
+    if grep -qE "MISSING_META|BAD_DATE" /tmp/freshness.out; then
+      fail "data file(s) missing _meta.last_updated or with an invalid date"
+      grep -E "MISSING_META|BAD_DATE" /tmp/freshness.out | sed 's/^/      /'
+    fi
+    if grep -qE "STALE" /tmp/freshness.out; then
+      warn "stale data files past TTL (refresh: python3 scripts/refresh-transfer-bonuses.py / scripts/refresh-hotel-data.py)"
+      grep -E "STALE" /tmp/freshness.out | sed 's/^/      /'
+    fi
   fi
 
   # 7. README and llms.txt match generated tables (drift detection)
@@ -239,6 +292,68 @@ PY
   fi
   if [ "$component_errors" -eq 0 ]; then
     ok "plugin: components present (skills/, .mcp.json, agents/travel-hacker.md)"
+  fi
+
+  # 11. All Python scripts compile
+  py_errors=0
+  for py in scripts/*.py; do
+    [ -e "$py" ] || continue
+    if ! python3 -m py_compile "$py" 2>/tmp/pycompile.out; then
+      echo "      py_compile failed: $py"
+      sed 's/^/        /' /tmp/pycompile.out
+      py_errors=$((py_errors+1))
+    fi
+  done
+  if [ "$py_errors" -eq 0 ]; then
+    ok "all Python scripts compile"
+  else
+    fail "$py_errors Python script(s) failed to compile"
+  fi
+
+  # 12. All shell scripts parse (bash -n)
+  sh_errors=0
+  for sh in scripts/*.sh; do
+    [ -e "$sh" ] || continue
+    if ! bash -n "$sh" 2>/tmp/bashn.out; then
+      echo "      bash -n failed: $sh"
+      sed 's/^/        /' /tmp/bashn.out
+      sh_errors=$((sh_errors+1))
+    fi
+  done
+  if [ "$sh_errors" -eq 0 ]; then
+    ok "all shell scripts parse (bash -n)"
+  else
+    fail "$sh_errors shell script(s) failed to parse"
+  fi
+
+  # 13. All data files are valid JSON
+  json_errors=0
+  for jf in data/*.json; do
+    [ -e "$jf" ] || continue
+    if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$jf" 2>/dev/null; then
+      echo "      invalid JSON: $jf"
+      json_errors=$((json_errors+1))
+    fi
+  done
+  if [ "$json_errors" -eq 0 ]; then
+    ok "all data/*.json are valid JSON"
+  else
+    fail "$json_errors data file(s) are not valid JSON"
+  fi
+
+  # 14. No expired bonus still listed as active (warns; refresh, don't block CI)
+  if [ -f data/transfer-bonuses.json ] && command -v jq >/dev/null 2>&1; then
+    today_iso=$(date +%Y-%m-%d)
+    expired=$(jq -r --arg today "$today_iso" \
+      '[.active_bonuses[]? | select(.end_date_inclusive != null and .end_date_inclusive < $today) | .id] | .[]' \
+      data/transfer-bonuses.json 2>/dev/null)
+    if [ -z "$expired" ]; then
+      ok "no expired bonuses listed as active in transfer-bonuses.json"
+    else
+      n=$(printf '%s\n' "$expired" | grep -c .)
+      warn "$n expired bonus(es) still marked active in transfer-bonuses.json (run: python3 scripts/refresh-transfer-bonuses.py)"
+      printf '%s\n' "$expired" | sed 's/^/        /'
+    fi
   fi
 fi
 
@@ -319,6 +434,7 @@ echo ""
 echo "=== Summary ==="
 echo "  Passed: $PASS"
 echo "  Failed: $FAIL"
+[ "$WARN" -gt 0 ] && echo "  Warnings: $WARN (non-blocking; see [!] lines above)"
 
 if [ "$FAIL" -gt 0 ]; then
   exit 1

@@ -114,15 +114,39 @@ The script picks up the file automatically and continues login.
 
 After first login with "Add This Device", 2FA is skipped on repeat runs from the same profile.
 
+## Known Limitation: travel-portal login captcha (May 2026)
+
+As of Amex's May 2026 overhaul, submitting a flight search redirects through a **separate travel-portal login gate** (`/account/travel/login`) — even when already signed in to americanexpress.com — protected by a **risk-based captcha layer**. The script fills and submits the gate automatically, and the outcome depends on how Amex scores the session that run:
+
+- **Sometimes it passes** — the automated re-auth is accepted and results load end to end (verified live July 2026: full Docker run returned 50 parsed flights).
+- **Sometimes it's silently swallowed** — fields hold the correct values after submit, the form's own `#loginSubmit` was clicked, no error renders, captcha markers sit in the DOM, and the page never advances. Also verified live, same day, same credentials, same container.
+
+The travel session is also short-lived (next-auth token, ~1 hour), so warm sessions expire quickly and the gate re-appears often. On gate failure the script prints a `Gate diag:` line (field/button/alert state) so breakage is diagnosable from logs, then exits promptly instead of waiting out the results timeout. Hotel search may be affected similarly.
+
+**The wall only exists on fresh logins.** With a warm saved session (valid cookies + trusted device), the gate passes automatically and searches work end to end. So the recovery is a one-time human step, not a dead end:
+
+1. When the gate rejects the automated login (captcha or otherwise), the script prints **`AMEX_HUMAN_LOGIN_NEEDED`** to stdout (and writes `HUMAN_LOGIN_NEEDED` to `/tmp/amex-2fa-status.txt`). **For agents:** stop retrying and tell the user to run the refresh script. (A separate sentinel, **`AMEX_BAD_CREDENTIALS`**, means the credential env vars contained an unresolved secret-manager reference instead of real values — fix the credential injection, not the login.)
+2. The user runs, **locally, not in Docker**:
+
+   ```bash
+   python3 scripts/refresh_login.py
+   ```
+
+   A real Chrome window opens on the travel portal. They log in themselves (password, captcha, email code, "Add This Device"), and the script saves the refreshed cookies/profile automatically, printing `AMEX_SESSION_REFRESHED` when done.
+3. Subsequent runs — including Docker runs mounting `~/.amex-travel-profiles` — reuse the warm session and skip the gate.
+
+To keep the session from going stale, run any cheap search (or `refresh_login.py`, which exits as soon as it sees a logged-in page) every week or two. Prefer a residential IP; datacenter and hotel IPs draw extra Akamai scrutiny.
+
 ## How It Works
 
 ### Flight Search Architecture
 
 1. **Auth:** Cookie injection from saved profile. Falls back to fresh login with email 2FA.
 2. **Form filling:** DOM-based search form automation (airport autocomplete, calendar picker, cabin selector)
-3. **Login gate:** After form submission, Amex redirects through a login interstitial. Script handles re-authentication automatically.
-4. **Data extraction:** Flight results are server-side rendered into `window.appData` (a 627KB Redux store). Script parses this JSON blob for all flight data.
-5. **IAP detection:** Platinum Card holders see `PEP` (IAP) fare types alongside `PUB` (public) fares. IAP fares are typically 10-15% cheaper for front-of-cabin international flights.
+3. **Login gate:** After form submission, Amex redirects through a login interstitial. Script handles re-authentication automatically (risk-based; see Known Limitation).
+4. **Data extraction (new UI, May 2026+):** Results land on `travel.americanexpress.com/en-us/book/flights/search-results`, a Next.js app with no usable `window.appData` (`__NEXT_DATA__` is config only). The script parses the DOM's `[data-testid="offer-card-wrapper"]` cards — airline, times, airports, duration, stops, cash, points, was/now discounts all carry dedicated `data-testid`s.
+5. **Data extraction (legacy fallback):** If no offer cards appear, the script falls back to the old `window.appData` Redux-store extraction (627KB JSON blob).
+6. **IAP detection:** Cards carrying the `private-fare-banner-PEP*` banner with a "was $X now it's $Y" cash discount are IAP (Platinum Member Airfares), typically 10-15% off front-of-cabin international. Alaska "Insider Fares" (points-only discounts) are flagged separately via `insider_fare`/`points_discount`.
 
 ### Hotel Search Architecture
 

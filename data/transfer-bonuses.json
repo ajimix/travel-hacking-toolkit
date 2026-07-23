@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "last_updated": "2026-04-29",
+    "last_updated": "2026-07-20",
     "staleness_days": 7,
     "description": "Active credit card transfer bonuses. Each bonus shows the current promotional ratio along with primary sources verifying it. Refreshed weekly via scripts/refresh-transfer-bonuses.py which scrapes Frequent Miler and cross-checks against AwardWallet. Confidence levels per Research Integrity Protocol: VERIFIED = both FM and AwardWallet agree; LIKELY = only FM; UNVERIFIED = inferred or single mention without strong source.",
     "primary_sources": [
@@ -21,132 +21,77 @@
   },
   "active_bonuses": [
     {
-      "id": "chase_ur_to_aeroplan_20pct_2026_04",
-      "from_program": "chase_ur",
-      "from_display": "Chase Ultimate Rewards",
-      "to_program": "aeroplan",
-      "to_display": "Air Canada Aeroplan",
-      "bonus_pct": 20,
-      "ratio": 1.2,
-      "start_date": "2026-04-01",
-      "end_date_inclusive": "2026-04-30",
-      "confidence": "VERIFIED",
-      "sources": [
-        "https://frequentmiler.com/get-20-bonus-when-transferring-chase-ultimate-rewards-to-air-canada-aeroplan-stack-with-10-cardholder-bonus/",
-        "https://awardwallet.com/news/credit-card-transfer-bonuses/"
-      ],
-      "standard_ratio": 1.0,
-      "effective_ratio": 1.2,
-      "transfer_example": "1,000 UR points -> 1,200 Aeroplan points (or 1,300 for Aeroplan Visa cardholders, which adds a stackable 10% cardholder bonus)",
-      "stackable_bonuses": [
-        "aeroplan_visa_10pct_cardholder_bonus"
-      ],
-      "notes": "Aeroplan is often the best Star Alliance booking program (no fuel surcharges on most partners, generous routing rules, mixed cabins). Aeroplan Visa cardholders get an additional 10% transfer bonus that stacks for an effective 30% bonus."
-    },
-    {
-      "id": "chase_ur_to_ihg_one_rewards_70pct_2026_04",
+      "id": "chase_ur_to_ihg_one_rewards_100pct_2026_07",
       "from_program": "chase_ur",
       "from_display": "Chase Ultimate Rewards",
       "to_program": "ihg_one_rewards",
       "to_display": "IHG",
-      "bonus_pct": 70,
-      "ratio": 1.7,
-      "start_date": "2026-04-01",
-      "end_date_inclusive": "2026-04-30",
+      "bonus_pct": 100,
+      "ratio": 2.0,
+      "start_date": "2026-07-15",
+      "end_date_inclusive": "2026-07-30",
       "confidence": "VERIFIED",
       "sources": [
-        "https://frequentmiler.com/you-can-get-a-70-bonus-transferring-chase-ultimate-rewards-to-ihg-but-you-shouldnt/",
+        "https://frequentmiler.com/chase-is-offering-a-70-100-transfer-bonus-to-ihg-one-rewards-give-it-a-miss/",
         "https://awardwallet.com/news/credit-card-transfer-bonuses/"
-      ],
-      "standard_ratio": 1.0,
-      "effective_ratio": 1.7,
-      "transfer_example": "1,000 UR points -> 1,700 IHG points",
-      "notes": "Frequent Miler title says 'but you shouldn't' - IHG points are valued ~0.5 cpp while Chase UR is ~2 cpp via portal or 2+ cpp via airline transfers. Even with 70% bonus, the math is roughly 1 UR -> 1.7 IHG = ~0.85 cpp value. Skip unless you have a specific high-end IHG redemption you've already priced and confirmed."
+      ]
     },
     {
-      "id": "capital_one_to_jal_mileage_bank_30pct_2026_04",
-      "from_program": "capital_one",
-      "from_display": "Capital One Miles",
-      "to_program": "jal_mileage_bank",
-      "to_display": "JAL (Japan Airlines) Mileage Bank",
-      "bonus_pct": 30,
-      "ratio": 1.3,
-      "start_date": "2026-04-01",
-      "end_date_inclusive": "2026-04-30",
-      "confidence": "VERIFIED",
-      "sources": [
-        "https://frequentmiler.com/get-a-30-bonus-when-transferring-capital-one-miles-to-japan-airlines-not-quite-11/",
-        "https://awardwallet.com/news/credit-card-transfer-bonuses/"
-      ],
-      "standard_ratio": 0.75,
-      "effective_ratio": 0.975,
-      "transfer_example": "1,000 Capital One miles -> 975 JAL miles (standard ratio is 4:3 = 0.75; 30% bonus brings it close to but not quite 1:1)",
-      "notes": "JAL Mileage Bank is a oneworld program. Strong sweet spots: JAL -> Asia is well-priced, especially in business and first class. Capital One's standard 4:3 ratio to JAL is mediocre; this 30% bonus brings it close to 1:1 effective."
-    },
-    {
-      "id": "citi_typ_to_leading_hotels_of_world_25pct_2026_05",
-      "from_program": "citi_typ",
-      "from_display": "Citi ThankYou Rewards",
-      "to_program": "leading_hotels_of_world",
-      "to_display": "Leading Hotels of the World",
-      "bonus_pct": 25,
-      "ratio": 1.25,
-      "start_date": "2026-04-19",
-      "end_date_inclusive": "2026-05-16",
-      "confidence": "LIKELY",
-      "sources": [
-        "https://frequentmiler.com/25-transfer-bonus-from-citi-to-leaders-hotels-of-the-world-leaders-club/"
-      ],
-      "standard_ratio": 1.0,
-      "effective_ratio": 1.25,
-      "transfer_example": "1,000 Citi TYP -> 1,250 LHW Leaders Club points (when transferred via the eligible Citi card combo)",
-      "notes": "Confidence is LIKELY rather than VERIFIED because only Frequent Miler currently mentions this bonus - TPG and AwardWallet have not yet picked it up. LHW is a niche luxury hotel collection. Useful primarily if you have a specific upcoming LHW stay; otherwise skip."
-    },
-    {
-      "id": "amex_membership_rewards_to_hilton_honors_20pct_2026_05",
+      "id": "amex_membership_rewards_to_virgin_atlantic_30pct_2026_07",
       "from_program": "amex_membership_rewards",
       "from_display": "Amex Membership Rewards",
-      "to_program": "hilton_honors",
-      "to_display": "Hilton",
-      "bonus_pct": 20,
-      "ratio": 1.2,
-      "start_date": "2026-04-28",
-      "end_date_inclusive": "2026-05-30",
+      "to_program": "virgin_atlantic",
+      "to_display": "Virgin Atlantic Flying Club",
+      "bonus_pct": 30,
+      "ratio": 1.3,
+      "start_date": "2026-07-01",
+      "end_date_inclusive": "2026-07-31",
       "confidence": "VERIFIED",
       "sources": [
-        "https://frequentmiler.com/amex-membership-rewards-20-transfer-bonus-to-hilton-honors-1000-2400/",
+        "https://frequentmiler.com/30-percent-transfer-bonus-american-express-membership-rewards-virgin-atlantic/",
         "https://awardwallet.com/news/credit-card-transfer-bonuses/"
-      ],
-      "standard_ratio": 2.0,
-      "effective_ratio": 2.4,
-      "transfer_example": "1,000 MR points -> 2,400 Hilton Honors points",
-      "notes": "Hilton transfers from MR are usually a poor use of MR (TPG values MR at ~2 cpp, Hilton at ~0.5 cpp, so 1:2.4 = ~1.2 cpp effective). Only consider for a specific high-value Hilton redemption."
+      ]
+    },
+    {
+      "id": "rove_to_qantas_50pct_2026_08",
+      "from_program": "rove",
+      "from_display": "Rove Miles",
+      "to_program": "qantas",
+      "to_display": "Qantas Frequent Flyer",
+      "bonus_pct": 50,
+      "ratio": 1.5,
+      "start_date": "2026-07-15",
+      "end_date_inclusive": "2026-08-14",
+      "confidence": "LIKELY",
+      "sources": [
+        "https://frequentmiler.com/rove-adds-qantas-as-transfer-partner-launches-with-50-transfer-bonus/"
+      ]
     }
   ],
   "expired_recently": [
     {
-      "id": "rove_to_sas_20pct_2026_04",
-      "from_display": "Rove Miles",
-      "to_display": "SAS EuroBonus",
-      "bonus_pct": 20,
-      "end_date_inclusive": "2026-04-08",
-      "note": "TPG's transfer-bonuses page (last updated April 1) still listed this as active when checked on Apr 29, but Frequent Miler shows it expired April 8. TPG content is stale."
-    },
-    {
-      "id": "citi_typ_to_avianca_25pct_2026_04",
-      "from_display": "Citi ThankYou Rewards",
-      "to_display": "Avianca LifeMiles",
-      "bonus_pct": 25,
-      "end_date_inclusive": "2026-04-18",
-      "note": "Recently expired. Avianca LifeMiles bonuses recur frequently (see history)."
-    },
-    {
-      "id": "citi_typ_to_virgin_atlantic_30pct_2026_04",
-      "from_display": "Citi ThankYou Rewards",
+      "id": "chase_ur_to_virgin_atlantic_30pct_2026_07",
+      "from_display": "Chase Ultimate Rewards",
       "to_display": "Virgin Atlantic Flying Club",
       "bonus_pct": 30,
-      "end_date_inclusive": "2026-04-18",
-      "note": "Recently expired. Virgin Atlantic bonuses recur frequently."
+      "end_date_inclusive": "2026-07-14",
+      "note": "Recently expired (auto-moved from active list)."
+    },
+    {
+      "id": "amex_membership_rewards_to_hilton_honors_20pct_2026_07",
+      "from_display": "Amex Membership Rewards",
+      "to_display": "Hilton",
+      "bonus_pct": 20,
+      "end_date_inclusive": "2026-07-14",
+      "note": "Recently expired (auto-moved from active list)."
+    },
+    {
+      "id": "amex_membership_rewards_to_avianca_lifemiles_15pct_2026_07",
+      "from_display": "Amex Membership Rewards",
+      "to_display": "Avianca LifeMiles",
+      "bonus_pct": 15,
+      "end_date_inclusive": "2026-07-15",
+      "note": "Recently expired (auto-moved from active list)."
     }
   ],
   "frequent_recurring_bonuses_to_watch": {

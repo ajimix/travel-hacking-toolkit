@@ -48,12 +48,12 @@ Seats.aero source names map to `transfer-partners.json` keys:
 | `united` | `united` | Chase UR (1:1), Bilt (1:1) |
 | `aeroplan` | `aeroplan` | Chase UR (1:1), Amex MR (1:1), Bilt (1:1), Capital One (1:1) |
 | `flyingblue` | `flying_blue` | Chase UR (1:1), Amex MR (1:1), Bilt (1:1), Capital One (1:1), Citi TY (1:1), Wells Fargo (1:1) |
-| `american` | `american` | Citi TY (1:1), Bilt (1:1) |
+| `american` | `american` | Citi TY (1:1) |
 | `alaska` | `alaska_hawaiian` | Bilt (1:1) |
-| `virginatlantic` | `virgin_atlantic` | Chase UR (1:1), Amex MR (1:1), Bilt (1:1), Citi TY (1:1) |
+| `virginatlantic` | `virgin_atlantic` | Chase UR (1:1), Amex MR (1:1), Bilt (1:1), Citi TY (1:1), Wells Fargo (1:1 via Virgin Red) |
 | `delta` | `delta` | Amex MR (1:1) |
 | `emirates` | `emirates` | Bilt (1:1), Amex MR (5:4), Capital One (4:3), Citi TY (5:4) |
-| `etihad` | `etihad` | Amex MR (1:1), Bilt (1:1), Capital One (1:1), Citi TY (1:1) |
+| `etihad` | `etihad` | Bilt (1:1), Capital One (1:1), Citi TY (1:1) |
 | `singapore` | `singapore` | Chase UR (1:1), Amex MR (1:1), Capital One (1:1), Citi TY (1:1) |
 | `jetblue` | `jetblue` | Chase UR (1:1), Citi TY (1:1), Wells Fargo (1:1), Amex MR (250:200), Capital One (5:3) |
 | `qatar` | `qatar` | Amex MR (1:1), Bilt (1:1), Capital One (1:1), Citi TY (1:1) |
@@ -171,9 +171,53 @@ Sometimes the cheapest path involves booking through a different program than th
 - **Flying Blue → Delta:** Often cheaper than SkyMiles, plus free stopovers.
 - **Alaska → Starlux:** Only points booking option for Starlux.
 
+## Transfer Timing Risks
+
+Points transfers are irreversible. Timing is the most common cause of lost awards. Transfer only after you've confirmed the exact award, and only when you're ready to ticket immediately.
+
+### Most transfers are instant, 24/7 — a handful are not
+Instant transfers post within minutes, any day of the week including weekends and holidays (they run over an API, not a business-day batch). Only the slow programs below are exposed to weekend/holiday delay. Do not assume a transfer will land in time for a same-day booking unless it is on the instant list.
+
+### Per-program transfer speeds
+| Program | Speed | Notes |
+|---------|-------|-------|
+| Aeroplan | Instant | Any day, via API. |
+| Flying Blue | Instant | Amex and Chase both post instantly. |
+| United MileagePlus | Instant | Chase, Bilt. |
+| Hyatt | Instant | Chase, Bilt. |
+| Virgin Atlantic | Instant | Amex/Chase; rarely up to 48h. |
+| BA / Iberia / Aer Lingus Avios | Instant | Pools instantly across the Avios ecosystem. Lowest-risk transfer. |
+| Qatar Avios | Instant | Balance display can lag — re-login to see it. |
+| Emirates Skywards | Instant | Occasionally 24h from Amex. |
+| JetBlue TrueBlue | Instant | Poor ratios (Cap One 5:3, Amex/Citi 5:4). |
+| Cathay Asia Miles | Instant from Amex; 24h from Capital One | |
+| Etihad Guest | Instant from Capital One | Amex path ended June 30, 2026. |
+| Avianca LifeMiles | Instant from Cap One/Citi | Amex posts instantly but the miles lock until the next day (Colombia time) — do not use the Amex path for a same-day booking. |
+| ANA Mileage Club | ~48 hours (up to 3 days) | Amex is the only path. Never same-day. |
+| Singapore KrisFlyer | Amex instant; Cap One up to 48h; Chase 1-2 days; Citi up to 5 business days | Transfer only after space is confirmed. |
+| Turkish Miles & Smiles | Bilt near-instant; Cap One ~24h; Citi up to 5 business days | No Amex or Chase path. |
+| Marriott Bonvoy | ~36 hours (up to a week) | Slowest mainstream target. Never transfer speculatively. |
+| Atmos Rewards (was Alaska Mileage Plan) | Bilt instant; Marriott 3:1 ~2 days | No Amex, Chase, or Capital One path. |
+
+### Weekend and holiday delay applies only to the slow programs
+The instant programs above are unaffected by weekends. For the slow ones — ANA, Singapore (via Chase/Citi), Turkish (via Citi), Marriott, and Atmos (via Marriott) — a Saturday, Sunday, or holiday submission can add days. If you must use one and seats are at risk, transfer before 5pm ET on the last business day before the weekend or holiday, not the night before.
+
+### New loyalty accounts
+A brand-new loyalty account can have its first transfer delayed or fraud-flagged, and some programs enforce a hard waiting period: JAL blocks transfers for ~60 days after linking some partners, and Iberia Plus requires the account to be 90 days old. Open any new account well in advance — weeks, not days — and confirm the account number and name match your card profile exactly before transferring.
+
+### Hold the seat first when the program allows it
+Many programs let you place an award on hold before paying, which removes the transfer-timing risk entirely. **Load the `award-holds` skill for current per-program rules** before assuming you have to transfer speculatively.
+- **Holds available (hold first, then transfer):** American AAdvantage (24h, free, online self-serve), Lufthansa Miles & More (5 days, phone), Flying Blue (3 days, phone), Cathay Asia Miles (up to 3 days, phone), Turkish Miles & Smiles (2 days), Virgin Atlantic (1-2 days), ANA (2 days, phone), Emirates (1 day, phone), Singapore KrisFlyer (agent discretion). AA's free online hold also works for most partner awards.
+- **No holds — transfer is speculative:** United, Delta, Aeroplan, Atmos (Alaska), British Airways, Iberia, Qatar, Korean, Etihad.
+
+When no hold is available, only transfer once:
+1. You've confirmed the exact award on the airline's own booking site (not just seats.aero)
+2. You're ready to ticket immediately after the miles land
+3. `ComputedLastSeen` on seats.aero is fresh — a stale cache means the seat may already be gone
+
 ## Notes
 
 - Transfer ratios rarely change, but verify against issuer websites before large transfers.
-- Transfers are usually instant but can take up to 48 hours. Don't transfer until you've confirmed award availability.
+- Transfers are irreversible. See Transfer Timing Risks above before committing.
 - Some programs run transfer bonuses (10-30% extra). Use the `transfer-bonuses` skill (live data, weekly auto-refresh) instead of guessing.
 - The "best" currency depends on what you have the most of AND what you value it at. A 1:1 transfer from a currency you value at 2.0 cpp costs more in opportunity than a 1:1 from one you value at 1.5 cpp.

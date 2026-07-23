@@ -7,7 +7,7 @@ summary: Active credit card transfer bonuses with primary-source citations. Tell
 
 # Transfer Bonuses Skill
 
-Authoritative reference for current credit card transfer bonuses. Reads from `data/transfer-bonuses.json`, which is refreshed weekly by `scripts/refresh-transfer-bonuses.py`. The script scrapes Frequent Miler (canonical) and cross-checks each bonus against AwardWallet. Each active bonus carries a confidence marker (`VERIFIED` if both FM and AwardWallet agree, `LIKELY` if only FM, `UNVERIFIED` if single weak source) per the toolkit's Research Integrity Protocol. TPG is sometimes consulted manually as a sanity check but is NOT scraped programmatically — TPG often shows expired bonuses as active.
+Authoritative reference for current credit card transfer bonuses. Reads from `data/transfer-bonuses.json`, which is refreshed weekly by `scripts/refresh-transfer-bonuses.py` (run automatically every Monday via `.github/workflows/refresh-data.yml`, and manually any time). The script scrapes Frequent Miler (canonical) and cross-checks each bonus against AwardWallet. Each active bonus carries a confidence marker (`VERIFIED` if both FM and AwardWallet agree, `LIKELY` if only FM, `UNVERIFIED` if single weak source) per the toolkit's Research Integrity Protocol. TPG is sometimes consulted manually as a sanity check but is NOT scraped programmatically — TPG often shows expired bonuses as active.
 
 ## When to Use
 

@@ -67,12 +67,12 @@ The script prompts for each key with masked input, validates them (rejects value
 
 The 4 highest-value keys:
 
-| Key | What it unlocks | Cost |
-|-----|------|-----------|
-| `SEATS_AERO_API_KEY` | Award flight search across 27 mileage programs. The main event. | Pro ~$8/mo |
-| `DUFFEL_API_KEY_LIVE` | Real GDS cash flight prices. | Free to search, pay per booking |
-| `IGNAV_API_KEY` | Backup cash flight prices. Fast REST API. | 1,000 free requests/month |
-| `AWARDWALLET_API_KEY` + `AWARDWALLET_USER_ID` | Auto-pull your loyalty balances, elite status, transfer ratios. | Business account required |
+| Key                                           | What it unlocks                                                 | Cost                            |
+| --------------------------------------------- | --------------------------------------------------------------- | ------------------------------- |
+| `SEATS_AERO_API_KEY`                          | Award flight search across 27 mileage programs. The main event. | Pro ~$8/mo                      |
+| `DUFFEL_API_KEY_LIVE`                         | Real GDS cash flight prices.                                    | Free to search, pay per booking |
+| `IGNAV_API_KEY`                               | Backup cash flight prices. Fast REST API.                       | 1,000 free requests/month       |
+| `AWARDWALLET_API_KEY` + `AWARDWALLET_USER_ID` | Auto-pull your loyalty balances, elite status, transfer ratios. | Business account required       |
 
 Other keys (SerpAPI, RapidAPI, LiteAPI, TripAdvisor, RESROBOT, Rejseplanen, Entur) extend specific skills. The setup skill covers them too. See the [full API key reference](#api-keys--signup-links) for signup links.
 
@@ -142,14 +142,14 @@ source .env && codex
 
 ### MCP Servers (real-time tools)
 
-| Server | What It Does | API Key |
-|--------|-------------|---------|
-| [Skiplagged](https://skiplagged.com) | Flight search with hidden city fares | None (free) |
-| [Kiwi.com](https://www.kiwi.com) | Flights with virtual interlining (creative cross-airline routing) | None (free) |
-| [Trivago](https://mcp.trivago.com/docs) | Hotel metasearch across booking sites | None (free) |
-| [Ferryhopper](https://ferryhopper.github.io/fh-mcp/) | Ferry routes across 33 countries, 190+ operators | None (free) |
-| [Airbnb](https://github.com/openbnb-org/mcp-server-airbnb) | Search Airbnb listings, property details, pricing. Includes geocoding fix, property type filter, and DISABLE_GEOCODING opt-out. | None (free) |
-| [LiteAPI](https://mcp.liteapi.travel) | Hotel search with live rates and booking | [LiteAPI](https://liteapi.travel) |
+| Server                                                     | What It Does                                                                                                                    | API Key                           |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| [Skiplagged](https://skiplagged.com)                       | Flight search with hidden city fares                                                                                            | None (free)                       |
+| [Kiwi.com](https://www.kiwi.com)                           | Flights with virtual interlining (creative cross-airline routing)                                                               | None (free)                       |
+| [Trivago](https://mcp.trivago.com/docs)                    | Hotel metasearch across booking sites                                                                                           | None (free)                       |
+| [Ferryhopper](https://ferryhopper.github.io/fh-mcp/)       | Ferry routes across 33 countries, 190+ operators                                                                                | None (free)                       |
+| [Airbnb](https://github.com/openbnb-org/mcp-server-airbnb) | Search Airbnb listings, property details, pricing. Includes geocoding fix, property type filter, and DISABLE_GEOCODING opt-out. | None (free)                       |
+| [LiteAPI](https://mcp.liteapi.travel)                      | Hotel search with live rates and booking                                                                                        | [LiteAPI](https://liteapi.travel) |
 
 ### Skills (API knowledge for your AI)
 
@@ -316,6 +316,7 @@ Skills are markdown files that give your AI specialized travel-hacking capabilit
 OpenCode, Claude Code, and Codex can all load them. Skills use **progressive disclosure**: each one's name and short description are loaded into context at session start. The agent reads the full SKILL.md only when it decides to use a skill. This keeps the always-loaded context small and lets the toolkit grow without bloating the agent's prompt.
 
 The `skills/` directory is the canonical source. The setup script either:
+
 - Installs a Codex plugin that points at the repo's skills and MCP config
 - Copies them to your tool's global skills directory (`~/.config/opencode/skills/` or `~/.claude/skills/`)
 - Or creates project-level symlinks so they load when you work from this directory
@@ -323,6 +324,7 @@ The `skills/` directory is the canonical source. The setup script either:
 ### MCP Servers
 
 MCP (Model Context Protocol) servers give your AI real-time tools it can call directly. The configs are in:
+
 - `opencode.json` for OpenCode (auto-discovered from the repo root)
 - `.mcp.json` for Claude Code (auto-discovered from the repo root)
 - `plugins/travel-hacking-toolkit/.mcp.json` for Codex plugin installs
