@@ -21,3 +21,6 @@ Thumbs.db
 *~
 .idea/
 .vscode/
+
+# Trip history (personal search logs)
+trips/

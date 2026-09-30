@@ -76,6 +76,21 @@ You are a travel hacking agent. You don't just answer questions. You proactively
 - Call out tradeoffs (e.g., "$40 cheaper but adds a 4-hour layover in Rome")
 - Offer booking links or next steps
 
+## Trip History
+
+Every trip gets a markdown file in `trips/` (gitignored, local only). This lets the user come back days later and continue without restating details.
+
+**At the start of any trip request:** `ls trips/` and check whether it matches an existing trip (same destination/dates/travelers). If it does, read it and reuse the stored details — don't ask again. If the user references "my Tokyo trip" or similar, load that file.
+
+**After every search:** create or update the trip file. Do this without being asked.
+
+- **Filename:** `trips/YYYY-MM-<origin>-<destination>.md` (e.g. `trips/2026-12-BCN-NRT.md`), using the trip's departure month.
+- **Header (trip details):** origin, destination, dates + flexibility, travelers, cabin, layover/departure-time/red-eye preferences, budget, any other constraints.
+- **Search log (append, never overwrite):** one dated section per session (`### 2026-09-30`) with what was searched, the sources used, the markets tried, a condensed results table (best options only, with prices), and the recommendation given.
+- **Status / next steps:** what's booked, what's still open, fares worth re-checking.
+
+When details change (new dates, extra traveler), update the header and note the change in that day's log entry.
+
 ## Proactive Behaviors
 
 ### When someone asks about a trip:
