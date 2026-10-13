@@ -176,7 +176,9 @@ Start here: the **orchestration skills** call everything else automatically.
 | **google-flights** | Browser-automated Google Flights. Cash prices, schedules, economy/business comparison. | None (requires agent-browser) |
 | **ignav** | Fast REST API flight search. Cash prices and booking links. | Ignav (1,000 free) |
 | **seatmaps** | Aircraft seat maps, cabin dimensions, seat recommendations. | None (requires agent-browser) |
+| **skyscanner** | Browser-automated Skyscanner. OTA fares (Trip.com, Mytrip, eDreams, Kiwi) vs airline-direct with seller ratings, month calendar. | None (requires Patchright) |
 | **southwest** | SW fare classes, points pricing, Companion Pass. Change flight price drop monitor. Docker: `ghcr.io/borski/sw-fares`. | None (requires Patchright) |
+| **travelpayouts** | Cached Aviasales fare data. Cheapest-date calendars, flexible-month and anywhere searches. | Travelpayouts (free) |
 | **wikipedia-airports** | Route discovery and airline-service sanity check via Wikipedia airport pages. Answers "does carrier X fly A→B" and "what airports serve destination Y" when fare tools disagree or miss obscure regional service. No API key. | None |
 <!-- END: readme:flights -->
 

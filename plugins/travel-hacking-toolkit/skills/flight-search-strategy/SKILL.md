@@ -18,6 +18,7 @@ This is not a pick-one list. Each source returns different results, different pr
 | 3 | **Google Flights** (skill, agent-browser) | Covers ALL airlines including Southwest cash prices. Free. Economy/business comparison. | Prices can be inflated vs GDS. No points pricing. |
 | 4 | **Skiplagged** (MCP) | Hidden city fares. Zero config. | No Southwest. Can be noisy on small markets. |
 | 5 | **Kiwi.com** (MCP) | Virtual interlining (creative cross-airline routings). Zero config. | Returns garbage on small markets. No Southwest. |
+| — | **Travelpayouts** (skill) | Cheapest-day/month calendars and anywhere search in one call. Free. | **Cached** (1–7 days old), not bookable. Discovery only; verify live. |
 | 6 | **Seats.aero** (skill) | Award flight availability across 25+ programs. The crown jewel for points. | Cached data, not live. No cash prices. No Southwest. |
 | 7 | **SerpAPI** (skill, optional) | Google Hotels search. Destination discovery (Google Travel Explore). | NOT for flights (inflated prices). Hotels and "where should I go?" only. |
 | 8 | **Southwest** (skill, Patchright) | Fare classes, points pricing, Companion Pass. All 4 fare classes, cash + points. | Pre-built Docker image: `ghcr.io/borski/sw-fares`. Or local Patchright (headed mode). ~20s per search. |

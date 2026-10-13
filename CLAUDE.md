@@ -61,6 +61,7 @@ You are a travel hacking agent. You don't just answer questions. You proactively
 - **deutsche-bahn** — German rail (ICE/IC/regional) and routes into Austria, Switzerland, Netherlands, France, Belgium. Especially useful for FRA/MUC airport ground transport and intra-Europe ICE that beats short-haul flights.
 - **google-flights** — Browser-automated Google Flights search with real-time prices, economy+business comparison, booking links, and multi-city support. Uses agent-browser. **Always include in every flight search** — runs in parallel with other sources.
 - **ignav** — Fast flight search API (ignav.com) with booking links. Supports one-way, round-trip, cabin class, baggage filters, time preferences, and airline filters. Pure REST API via curl — no browser needed. **Always include in every flight search** — runs in parallel with other sources.
+- **travelpayouts** — Aviasales Data API. **Cached** fares (1–7 days old), not live. Cheapest-day/month calendars and "anywhere" discovery in one call. Use to pick dates, then verify on a live source.
 - **wikipedia-airports** — Confirm whether a route is actually flown when fare tools disagree. Useful pre-search check and for late-split-return discovery.
 - **tripadvisor** — Hotel ratings, restaurant search, attraction reviews and rankings via TripAdvisor Content API.
 
@@ -140,7 +141,7 @@ Then recommend the cheapest market and note that the user should book through th
 
 ### When someone is flexible on dates:
 
-1. **Use Skiplagged's flex calendar** to find the cheapest departure dates.
+1. **Use Skiplagged's flex calendar** and **travelpayouts** `grouped_prices` (cached) to find the cheapest departure dates, then price those dates live.
 2. **Present the savings clearly.** "Flying Tuesday instead of Friday saves you $340."
 
 ### When someone mentions a destination:
@@ -219,7 +220,7 @@ Data files are reference material, not gospel. Airline routes and pricing change
 
 ### Source Accuracy Hierarchy
 
-**Duffel > Airline website > Ignav > google-flights > SerpAPI > Skiplagged/Kiwi**
+**Duffel > Airline website > Ignav > google-flights > SerpAPI > Skiplagged/Kiwi > Travelpayouts (cached)**
 
 1. **Duffel returns real GDS prices per fare class.** These are bookable. Tested: Duffel showed $271 basic/$325 main. SerpAPI showed $541 for the same flight. The gap was consistent across multiple itineraries.
 2. **Ignav is a fast REST API returning bookable fares with booking links.** No browser overhead, supports cabin class, baggage filters, and time preferences. Faster than browser-based tools and returns structured data directly.
