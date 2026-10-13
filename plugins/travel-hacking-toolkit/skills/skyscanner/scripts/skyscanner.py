@@ -8,15 +8,15 @@ through for results and month-calendar pages. The per-itinerary "deals" page
 harder and usually needs a human to press & hold once; after that the
 clearance cookie lives in the persistent profile and later runs pass.
 
-Requires: pip install patchright && patchright install chromium
+Requires the shared venv: ~/.cache/travel-hacking-toolkit/venv (see SKILL.md Setup)
 Must run headed. A Chrome window appears while the script runs.
 
 Usage:
-    skyscanner.py search --origin BCN --dest LHR --depart 2026-11-20 [--return 2026-11-27]
-                         [--adults 1] [--children 5,9] [--cabin economy] [--market UK]
+    skyscanner.py search --origin LAX --dest HNL --depart 2026-11-20 [--return 2026-11-27]
+                         [--adults 1] [--children 5,9] [--cabin economy] [--market US]
                          [--sort best|cheapest|fastest] [--limit 15] [--json]
-    skyscanner.py month  --origin BCN --dest LHR --month 2026-11 [--market UK] [--json]
-    skyscanner.py deals  --url <config URL from search output> [--market UK] [--json]
+    skyscanner.py month  --origin LAX --dest HNL --month 2026-11 [--market US] [--json]
+    skyscanner.py deals  --url <config URL from search output> [--market US] [--json]
                          [--captcha-wait 120]
 """
 
@@ -72,6 +72,10 @@ MARKETS = {
 }
 
 CABINS = {"economy", "premiumeconomy", "business", "first"}
+BLOCKED_MSG = (
+    "BLOCKED: Skyscanner served a CAPTCHA on {host}. Retry in a few minutes, or rerun with "
+    "--captcha-wait 120 and press & hold the button in the Chrome window."
+)
 RESULT_SETTLE_MAX = 45  # seconds to wait for results to stop growing
 
 
@@ -90,8 +94,8 @@ def culture_cookie(host, market, currency):
 
 
 def is_captcha(page):
-    if "/captcha" in page.url:
-        return True
+    """True while the challenge is on screen. Checks the text, not the URL: after a
+    successful press & hold the browser stays on the /captcha URL with a blank page."""
     try:
         return "Are you a person or a robot" in page.inner_text("body", timeout=3000)
     except Exception:
@@ -117,7 +121,7 @@ def wait_out_captcha(page, seconds):
         time.sleep(2)
         if not is_captcha(page):
             log("CAPTCHA cleared.")
-            time.sleep(4)
+            time.sleep(2)
             return True
     return False
 
@@ -144,10 +148,10 @@ class Browser:
         finally:
             self._pw.stop()
 
-    def warmup(self):
-        """Homepage first. Deep links without a warm session get challenged more often."""
-        self.page.goto(f"https://{self.host}/", wait_until="domcontentloaded")
-        time.sleep(4)
+    def warmup(self, captcha_wait=0):
+        """Homepage first. Deep links without a warm session get challenged more often.
+        CAPTCHA clearance is per domain: clearing skyscanner.net does not clear skyscanner.com."""
+        self._load(f"https://{self.host}/", captcha_wait)
         if self.currency is None:
             # Unknown market: let Skyscanner redirect, then pin English on that host.
             from urllib.parse import urlparse
@@ -161,14 +165,21 @@ class Browser:
 
     def goto(self, path_or_url, captcha_wait=0):
         url = path_or_url if path_or_url.startswith("http") else f"https://{self.host}{path_or_url}"
+        self._load(url, captcha_wait)
+        return url
+
+    def _load(self, url, captcha_wait):
         self.page.goto(url, wait_until="domcontentloaded")
         time.sleep(3)
+        if not is_captcha(self.page):
+            return
         if not wait_out_captcha(self.page, captcha_wait):
-            raise SystemExit(
-                "BLOCKED: Skyscanner served a CAPTCHA. Retry in a few minutes, or rerun with "
-                "--captcha-wait 120 and press & hold the button in the Chrome window."
-            )
-        return url
+            raise SystemExit(BLOCKED_MSG.format(host=self.host))
+        # The cleared challenge doesn't redirect back, so load the target again.
+        self.page.goto(url, wait_until="domcontentloaded")
+        time.sleep(3)
+        if is_captcha(self.page):
+            raise SystemExit(BLOCKED_MSG.format(host=self.host))
 
 
 # --- search ----------------------------------------------------------------
@@ -192,9 +203,19 @@ LEG_RE = re.compile(
     r"(?:(Outbound|Inbound) flight|Flight) with (?P<airlines>[^.]+)\.\s*"
     r"Departing from (?P<from>.+?) at (?P<dep>\d{1,2}:\d{2}), arriving in (?P<to>.+?) at (?P<arr>\d{1,2}:\d{2})"
     r"(?:, (?P<later>one day|two days|\w+ days) later)?\.\s*"
-    r"(?P<kind>Direct|Indirect) flight taking (?P<dur>[^.]+?)(?: with (?P<nstops>\d+) stops? in (?P<via>[^.]+))?\.",
+    r"(?P<kind>Direct|Indirect) flight taking (?P<dur>[^.]+?)(?: with (?P<nstops>\d+|one|two|three|four|five|a) stops? in (?P<via>[^.]+))?\.",
     re.S,
 )
+
+
+AD_MARKERS = ("Ad for", "Advertisement by", "Opens in a new window", "Opens in new window")
+STOP_WORDS = {"a": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
+
+
+def stop_count(s):
+    if not s:
+        return 0
+    return int(s) if s.isdigit() else STOP_WORDS.get(s.lower(), 1)
 
 
 def short_dur(s):
@@ -210,7 +231,7 @@ def parse_option(text, href):
     pre = m.group(2)
     opt = {
         "option": int(m.group(1)),
-        "sponsored": "Ad for" in pre or "Opens in a new window" in pre,
+        "sponsored": any(mk in pre for mk in AD_MARKERS),
         "price": m.group(3).replace("\xa0", " ").strip(),
         "price_value": price_value(m.group(3)),
         "legs": [],
@@ -224,11 +245,11 @@ def parse_option(text, href):
             "to": lm.group("to").strip(),
             "depart": lm.group("dep"),
             "arrive": lm.group("arr") + ("+1" if later == "one day" else ("+2" if later else "")),
-            "stops": int(lm.group("nstops") or 0),
+            "stops": stop_count(lm.group("nstops")),
             "via": [v.strip() for v in (lm.group("via") or "").split(",") if v.strip()],
             "duration": short_dur(lm.group("dur")),
         })
-    hm = re.search(r"Book with (.+?) from", text)
+    hm = re.search(r"Book with (.+?) from", text) or re.search(r"Advertisement by (.+?)\.", text)
     if hm:
         opt["seller"] = hm.group(1).strip()  # sponsored airline ads name their seller
     dm = re.search(r"\n(\d+) deals?\b", text)
@@ -324,7 +345,7 @@ def extract_options(page):
     # Ads link off-site (no /config/), so pick them up from the page text too.
     body = page.inner_text("body")
     for chunk in re.split(r"(?=Flight option \d+:)", body)[1:]:
-        if "Opens in a new window" in chunk[:200] or "Ad for" in chunk[:200]:
+        if any(mk in chunk[:200] for mk in AD_MARKERS):
             o = parse_option("x\n" + chunk, None)
             if o:
                 o["sponsored"] = True
@@ -335,11 +356,16 @@ def extract_options(page):
 
 def cmd_search(a):
     with Browser(a.market) as b:
-        b.warmup()
+        b.warmup(a.captcha_wait)
         url = b.goto(search_path(a), a.captcha_wait)
         wait_for_results(b.page)
         sorted_by_site = click_sort(b.page, a.sort)
         opts, body = extract_options(b.page)
+        if not opts:
+            dump = os.path.join(PROFILE_DIR, "last-search.txt")
+            with open(dump, "w") as f:
+                f.write(body)
+            raise SystemExit(f"NO RESULTS PARSED on {b.page.url.split('?')[0]}. Page text saved to {dump}.")
         if not sorted_by_site and a.sort == "cheapest":
             opts.sort(key=lambda o: o["price_value"] or 1e12)
         result = {
@@ -383,7 +409,7 @@ def cmd_month(a):
     path = (f"/transport/flights/{a.origin.lower()}/{a.dest.lower()}/"
             f"?adultsv2={a.adults}&cabinclass={a.cabin}&rtn=0&oym={ym}&selectedoday=01")
     with Browser(a.market) as b:
-        b.warmup()
+        b.warmup(a.captcha_wait)
         url = b.goto(path, a.captcha_wait)
         time.sleep(10)
         body = b.page.inner_text("body").replace("\u200b", "")
@@ -437,7 +463,7 @@ def render_month(r):
 
 def cmd_deals(a):
     with Browser(a.market) as b:
-        b.warmup()
+        b.warmup(a.captcha_wait)
         b.goto(a.url, a.captcha_wait)
         log("deals page loaded, waiting for providers")
         for _ in range(10):
@@ -450,15 +476,25 @@ def cmd_deals(a):
         with open(raw_path, "w") as f:
             f.write(body)
         cheapest = None
+        flights = parse_flight_numbers(body)
+        carriers = {f["airline"].lower() for f in flights}
         deals = parse_deals(body)
+        for d in deals:
+            # An airline can sell a partner's flights (e.g. GOL selling Alaska). Only the
+            # carrier actually on the ticket counts as "airline direct".
+            d["seller_type"] = (
+                "agency" if not d["is_airline"]
+                else "airline" if d["seller"].lower() in carriers
+                else "partner airline"
+            )
         if deals:
             cheapest = min(deals, key=lambda d: d["price_value"] or 1e12)
-        airline_deals = [d for d in deals if d["is_airline"]]
+        airline_deals = [d for d in deals if d["seller_type"] == "airline"]
         result = {
             "source": "skyscanner",
             "market": b.market,
             "url": b.page.url.split("?")[0],
-            "flights": parse_flight_numbers(body),
+            "flights": flights,
             "deals": deals,
             "cheapest": cheapest,
             "cheapest_airline_direct": min(airline_deals, key=lambda d: d["price_value"]) if airline_deals else None,
@@ -520,14 +556,16 @@ def render_deals(r):
     if r["flights"]:
         print("Flights: " + ", ".join(f"{f['flight']} ({f['airline']})" for f in r["flights"]))
     for d in r["deals"]:
-        kind = "AIRLINE" if d["is_airline"] else "agency"
+        kind = d.get("seller_type", "airline" if d["is_airline"] else "agency")
         rating = f"{d['rating']}/5 ({d['reviews']:,})" if d["rating"] else "no rating"
         rec = " recommended" if d["recommended"] else ""
-        print(f"{d['price']:>10}  {d['seller']:<22} {kind:<8} {rating}{rec}  {'; '.join(d['features'])}")
+        print(f"{d['price']:>10}  {d['seller']:<22} {kind:<15} {rating}{rec}  {'; '.join(d['features'])}")
     if r["cheapest"] and r["cheapest_airline_direct"]:
         c, al = r["cheapest"], r["cheapest_airline_direct"]
         gap = (al["price_value"] or 0) - (c["price_value"] or 0)
         print(f"Cheapest: {c['seller']} {c['price']}. Airline direct: {al['seller']} {al['price']} (gap {gap:.0f}).")
+    elif r["cheapest"]:
+        print(f"Cheapest: {r['cheapest']['seller']} {r['cheapest']['price']}. The operating airline doesn't sell this itinerary on Skyscanner.")
     if not r["deals"]:
         print(f"No deal rows parsed. Raw page text saved to {r['raw_text']}.")
 

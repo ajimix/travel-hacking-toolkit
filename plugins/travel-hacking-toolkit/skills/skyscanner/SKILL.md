@@ -12,14 +12,20 @@ Skyscanner adds what the other sources in this toolkit mostly lack: **OTA prices
 
 The catch is twofold, and both shape how you use it:
 
-1. **Bot protection (PerimeterX).** agent-browser and plain Playwright get a "Press & Hold" CAPTCHA on every page. Patchright in headed mode gets through for results and month pages most of the time. The per-itinerary deals page is guarded harder and usually needs the user to press & hold once; after that the clearance is stored in the browser profile and later runs pass, including deals pages. Repeated searches from one IP in a short time also trigger the CAPTCHA.
-2. **The cheapest price is often a small agency with poor service.** In testing, the cheapest seller on a Vueling BCN-LHR return was Trip.com at £180, with Vueling itself 7th at £194 and Worldairfares last at £345. The cheapest PEN-BCN fare (RM 1,644) was a 53-hour, 3-stop self-transfer on Scoot + Lauda + Wizz sold by a single agency. That's why the deals step exists: always say who is selling before recommending a Skyscanner fare.
+1. **Bot protection (PerimeterX).** agent-browser and plain Playwright get a "Press & Hold" CAPTCHA on every page. Patchright in headed mode gets through for results and month pages most of the time. The per-itinerary deals page is guarded harder and usually needs the user to press & hold once; after that the clearance is stored in the browser profile and later runs pass, including deals pages. **Clearance is per domain**: each market has its own site (`--market US` is skyscanner.com, `UK` is skyscanner.net, `ES` is skyscanner.es), so the first search in a new market may need its own press & hold. Repeated searches from one IP in a short time also trigger the CAPTCHA.
+2. **The headline price often comes from one small agency, not the airline.** In testing, an Alaska Airlines LAX-HNL nonstop round trip had 10 sellers. The $683 headline was Wizfair alone; the next cheapest was Expedia at $807. The only airline in the list was GOL (2.0/5), a partner reselling Alaska's flights at $927, and Alaska itself didn't sell the itinerary on Skyscanner at all. On JFK-LAX, by contrast, every American Airlines fare had a single seller, so Skyscanner added nothing over the airline-direct sources. That's why the deals step exists: always say who is selling before recommending a Skyscanner fare.
 
 ## Setup
 
+Patchright lives in a shared virtualenv outside the repo. Homebrew's Python refuses a plain `pip install`, so don't use one. Create it once:
+
 ```bash
-pip install patchright && patchright install chromium
+python3 -m venv ~/.cache/travel-hacking-toolkit/venv
+~/.cache/travel-hacking-toolkit/venv/bin/pip install patchright
+~/.cache/travel-hacking-toolkit/venv/bin/patchright install chromium
 ```
+
+Run every command with that interpreter (`$PY` below). If `$PY` doesn't exist, create the venv first rather than falling back to system `python3`, where the import will fail.
 
 The script runs headed (a Chrome window appears while it works; this is required, as headless gets blocked). It keeps a persistent browser profile at `~/.cache/travel-hacking-toolkit/skyscanner-profile` (override with `SKYSCANNER_PROFILE`) so that a CAPTCHA cleared once keeps working for later runs.
 
@@ -28,19 +34,20 @@ The script runs headed (a Chrome window appears while it works; this is required
 All commands accept `--market XX` (default `UK`), `--json`, and `--captcha-wait N`.
 
 ```bash
+PY=~/.cache/travel-hacking-toolkit/venv/bin/python
 S=skills/skyscanner/scripts/skyscanner.py
 
 # Results list (one-way or round trip), cheapest first
-python3 $S search --origin BCN --dest LHR --depart 2026-11-20 --return 2026-11-27 --market ES --json
+$PY $S search --origin LAX --dest HNL --depart 2026-11-20 --return 2026-11-27 --market US --json
 
 # Options: --adults 2 --children 5,9 --cabin economy|premiumeconomy|business|first
 #          --sort cheapest|best|fastest --limit 15
 
 # Cheapest day in a month (one-way, outbound)
-python3 $S month --origin BCN --dest LHR --month 2026-11 --market ES --json
+$PY $S month --origin LAX --dest HNL --month 2026-11 --market US --json
 
 # Who sells a specific itinerary (deals_url comes from the search output)
-python3 $S deals --url "<deals_url>" --market ES --json
+$PY $S deals --url "<deals_url>" --market US --json
 ```
 
 ### What `search` returns
@@ -53,31 +60,33 @@ Results stream in for 10-30 seconds; the script waits for the list to stop growi
 
 ### What `deals` returns
 
-Every seller for that itinerary, cheapest first: `seller`, `price`, `is_airline` (Skyscanner's own "Airline" tag), `rating` and `reviews` (Skyscanner's 1-5 provider score and review count), `recommended`, and `features`: the provider's selling points and warnings, e.g. "Change booking for a fee", "Upgrade to make booking changes", "Self-transfer", "Transfer protection included", "Buy now, pay later". It also returns the flight numbers, `cheapest`, and `cheapest_airline_direct`, so the agency-vs-airline gap is one subtraction. The deals page defaults to `--captcha-wait 120`: if the CAPTCHA appears, tell the user **"A Chrome window opened on Skyscanner. Press and hold the button until it clears."** and let the command run. Do not attempt to solve CAPTCHAs programmatically.
+Every seller for that itinerary, cheapest first: `seller`, `price`, `seller_type` (`airline` when it's the carrier actually flying the ticket, `partner airline` when another airline resells it, otherwise `agency`), `rating` and `reviews` (Skyscanner's 1-5 provider score and review count), `recommended`, and `features`: the provider's selling points and warnings, e.g. "Change booking for a fee", "Upgrade to make booking changes", "Self-transfer", "Transfer protection included", "Buy now, pay later". It also returns the flight numbers, `cheapest`, and `cheapest_airline_direct` (null when the operating airline doesn't sell the itinerary on Skyscanner; then get the airline's own price from Duffel, Ignav or Google Flights). The deals page defaults to `--captcha-wait 120`: if the CAPTCHA appears, tell the user **"A Chrome window opened on Skyscanner. Press and hold the button until it clears."** and let the command run. Do not attempt to solve CAPTCHAs programmatically.
 
 Run `deals` for the 1-3 itineraries you're actually going to recommend, not for every row. Each one costs a page load and raises the CAPTCHA risk.
 
 ## Market selection
 
-`--market` sets Skyscanner's market and currency while keeping the page in English (via the `ssculture` cookie on the market's own domain, e.g. `www.skyscanner.es`). Follow the toolkit's market playbook: origin country first, then destination country. Skyscanner prices genuinely differ by market, because some OTAs only sell in some markets. Supported codes are listed in `MARKETS` in the script. Unknown codes fall back to Skyscanner's own geo-redirect.
+`--market` sets Skyscanner's market and currency while keeping the page in English (via the `ssculture` cookie on the market's own domain, e.g. `www.skyscanner.com` for US). Follow the toolkit's market playbook: origin country first, then destination country. Skyscanner prices genuinely differ by market, because some OTAs only sell in some markets. Supported codes are listed in `MARKETS` in the script. Unknown codes fall back to Skyscanner's own geo-redirect.
 
-Prices come back in the market's currency (`£`, `€`, `RM`...). Convert to the user's currency when comparing against other sources.
+Prices come back in the market's currency (`$`, `£`, `€`...). Convert to the user's currency when comparing against other sources.
 
 ## How to present results
 
 Fold Skyscanner rows into the same comparison table as the other sources, with a **Sold by** column so OTA fares can't hide among airline fares:
 
-| #   | Airline | Stops  | Duration | Depart | Arrive | Price | Sold by                   | Source         |
-| --- | ------- | ------ | -------- | ------ | ------ | ----- | ------------------------- | -------------- |
-| 1   | Vueling | Direct | 2h 40m   | 07:30  | 09:10  | £180  | Trip.com (agency, 4.8/5)  | Skyscanner UK  |
-| 2   | Vueling | Direct | 2h 40m   | 07:30  | 09:10  | £194  | Vueling (airline)         | Skyscanner UK  |
-| 3   | BA      | Direct | 2h 40m   | 06:35  | 08:15  | £233  | British Airways (airline) | Google Flights |
+| #   | Airline | Stops  | Out (LAX-HNL) | Back (HNL-LAX) | Price | Sold by                         | Source        |
+| --- | ------- | ------ | ------------- | -------------- | ----- | ------------------------------- | ------------- |
+| 1   | Alaska  | Direct | 07:00-11:04   | 08:05-15:28    | $683  | Wizfair (agency, 4.7/5)         | Skyscanner US |
+| 2   | Alaska  | Direct | 07:00-11:04   | 08:05-15:28    | $807  | Expedia (agency, 4.8/5)         | Skyscanner US |
+| 3   | Alaska  | Direct | 07:00-11:04   | 08:05-15:28    | $927  | GOL (partner airline, 2.0/5)    | Skyscanner US |
 
 Then say plainly what the agency discount buys and what it costs:
 
-- **Agency vs airline gap.** "The £180 is Trip.com (4.8/5, changes for a fee). Vueling direct is £194 on the same flights. That's £14 (7%) saved, against changes and refunds going through Trip.com instead of Vueling."
+- **Agency vs airline gap.** Compare the cheapest seller with the operating airline's own price, from the deals list or, when the airline isn't listed, from Duffel, Ignav or Google Flights. Say it in one line, e.g. "The $683 is Wizfair, not Alaska. Changes and refunds would go through Wizfair."
+- **Lone outlier.** When one seller is far below everyone else (Wizfair $683 vs Expedia $807 above, 15% lower), say so. Such prices sometimes disappear or grow at the agency's checkout. Quote the next seller as the realistic fallback.
+- **Partner airline sellers.** An airline selling another airline's flights (GOL selling Alaska) is not "booking direct". Changes go through the reseller.
 - **Small or weak agency.** Use the `rating` and `reviews` fields: under ~4.0/5, or only a few hundred reviews, deserves a warning. Also flag features like "Upgrade to make booking changes" (changes need a paid add-on). Be extra careful on long-haul or expensive fares where a schedule change is likely. As a rule of thumb, an agency saving under ~10% is rarely worth it; above ~20% it's worth considering for simple, non-refundable trips.
-- **Self-transfer.** Itineraries marked `self_transfer` are separate tickets. A missed connection is the traveller's problem, and they may need to re-check bags and pass through immigration. Say so.
+- **Self-transfer.** Itineraries marked `self_transfer` are separate tickets. A missed connection is the traveler's problem, and they may need to re-check bags and go through security (or immigration) again. Say so.
 - **Only seen without seller.** If you couldn't run `deals` (CAPTCHA not cleared), write "Sold by: unknown, N deals" and don't present the price as an airline fare.
 
 ## Failure modes
