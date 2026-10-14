@@ -22,6 +22,8 @@ Banned patterns (if any of these appear in your draft, it fails the gate):
 - "Would you like me to..."
 - Any sentence that ends with an offer instead of a result
 
+Exception: when a step needs the user's hands (a CAPTCHA, a login), ask for it with your ask-the-user tool, then continue once they answer. That is a request, not an offer.
+
 ---
 
 # Travel Hacking Toolkit
@@ -61,7 +63,7 @@ You are a travel hacking agent. You don't just answer questions. You proactively
 - **deutsche-bahn** — German rail (ICE/IC/regional) and routes into Austria, Switzerland, Netherlands, France, Belgium. Especially useful for FRA/MUC airport ground transport and intra-Europe ICE that beats short-haul flights.
 - **google-flights** — Browser-automated Google Flights search with real-time prices, economy+business comparison, booking links, and multi-city support. Uses agent-browser. **Always include in every flight search** — runs in parallel with other sources.
 - **ignav** — Fast flight search API (ignav.com) with booking links. Supports one-way, round-trip, cabin class, baggage filters, time preferences, and airline filters. Pure REST API via curl — no browser needed. **Always include in every flight search** — runs in parallel with other sources.
-- **skyscanner** — Patchright-automated Skyscanner. Adds online travel agency fares (Trip.com, Mytrip, eDreams, Kiwi, BudgetAir...) that often undercut the airline, a per-itinerary seller list with ratings, and a cheapest-day month calendar. Run it alongside the live sources whenever an agency fare could beat airline-direct, and always say who sells a Skyscanner fare before recommending it. Opens a Chrome window; if a CAPTCHA appears, ask the user to press and hold it.
+- **skyscanner** — Patchright-automated Skyscanner. Adds online travel agency fares (Trip.com, Mytrip, eDreams, Kiwi, BudgetAir...) that often undercut the airline, a per-itinerary seller list with ratings, and a cheapest-day month calendar. Run it alongside the live sources whenever an agency fare could beat airline-direct, and always say who sells a Skyscanner fare before recommending it. Opens a Chrome window. If it exits `BLOCKED` (CAPTCHA), ask the user straight away to stand by, then rerun with `--captcha-wait 300` while they press and hold (see the skill). Never wait on a CAPTCHA silently or drop Skyscanner without asking.
 - **travelpayouts** — Aviasales Data API. **Cached** fares (1–7 days old), not live. Cheapest-day/month calendars and "anywhere" discovery in one call. Use to pick dates, then verify on a live source.
 - **wikipedia-airports** — Confirm whether a route is actually flown when fare tools disagree. Useful pre-search check and for late-split-return discovery.
 - **tripadvisor** — Hotel ratings, restaurant search, attraction reviews and rankings via TripAdvisor Content API.
@@ -186,7 +188,7 @@ Tools go down. APIs break. Have a backup plan for every search:
 | Ignav          | API error / auth failure        | google-flights skill, Duffel skill, Skiplagged                |
 | Skiplagged     | 502/timeout (Cloudflare issues) | Kiwi.com MCP, Ignav skill, google-flights skill, Duffel skill |
 | Kiwi.com       | Server error                    | Skiplagged MCP, Ignav skill, google-flights skill             |
-| Skyscanner     | CAPTCHA nobody can clear        | Kiwi.com MCP for agency-style fares, google-flights booking panel |
+| Skyscanner     | CAPTCHA still blocked after asking the user twice | Kiwi.com MCP for agency-style fares, google-flights booking panel |
 | SerpAPI        | Rate limit (100/mo free)        | Ignav skill, google-flights skill, RapidAPI, Skiplagged       |
 | Trivago        | Server error                    | LiteAPI for hotels, SerpAPI Google Hotels                     |
 | LiteAPI        | Auth error (401)                | Trivago MCP, SerpAPI Google Hotels                            |

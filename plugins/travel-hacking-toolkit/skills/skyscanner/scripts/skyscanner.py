@@ -15,9 +15,13 @@ Usage:
     skyscanner.py search --origin LAX --dest HNL --depart 2026-11-20 [--return 2026-11-27]
                          [--adults 1] [--children 5,9] [--cabin economy] [--market US]
                          [--sort best|cheapest|fastest] [--limit 15] [--json]
-    skyscanner.py month  --origin LAX --dest HNL --month 2026-11 [--market US] [--json]
+    skyscanner.py search --leg JFK LAX 2026-11-20 --leg SFO JFK 2026-11-27 [same options]
+                         (multi-city / open-jaw, 2-6 legs)
+    skyscanner.py month --origin LAX --dest HNL --month 2026-11 [--market US] [--json]
     skyscanner.py deals  --url <config URL from search output> [--market US] [--json]
-                         [--captcha-wait 120]
+
+All commands fail fast (exit 3, "BLOCKED: ...") when a CAPTCHA appears. Ask the
+user to stand by, then rerun with --captcha-wait 300.
 """
 
 import argparse
@@ -26,6 +30,7 @@ import os
 import random
 import re
 import signal
+import subprocess
 import sys
 import time
 from datetime import date, datetime
@@ -72,9 +77,10 @@ MARKETS = {
 }
 
 CABINS = {"economy", "premiumeconomy", "business", "first"}
+BLOCKED_EXIT = 3
 BLOCKED_MSG = (
-    "BLOCKED: Skyscanner served a CAPTCHA on {host}. Retry in a few minutes, or rerun with "
-    "--captcha-wait 120 and press & hold the button in the Chrome window."
+    "BLOCKED: Skyscanner served a CAPTCHA on {host}. Ask the user to press & hold the button "
+    "in the Chrome window, then rerun this exact command with --captcha-wait 300."
 )
 RESULT_SETTLE_MAX = 45  # seconds to wait for results to stop growing
 
@@ -109,12 +115,30 @@ def wander(page, n=5):
         time.sleep(random.uniform(0.15, 0.4))
 
 
+def notify(msg):
+    """Best-effort desktop notification, so the user notices the window even when the
+    agent's own output is hidden until the command returns."""
+    try:
+        if sys.platform == "darwin":
+            subprocess.run(["osascript", "-e", f'display notification "{msg}" with title "Skyscanner" sound name "Glass"'],
+                           timeout=5, capture_output=True)
+        elif sys.platform.startswith("linux"):
+            subprocess.run(["notify-send", "Skyscanner", msg], timeout=5, capture_output=True)
+    except Exception:
+        pass
+
+
 def wait_out_captcha(page, seconds):
     """Give the human at the keyboard a chance to press & hold. Never solve it ourselves."""
     if not is_captcha(page):
         return True
     if seconds <= 0:
         return False
+    try:
+        page.bring_to_front()
+    except Exception:
+        pass
+    notify("Press & hold the button in the Chrome window")
     log(f"CAPTCHA shown. Press & hold the button in the Chrome window (waiting up to {seconds}s).")
     end = time.time() + seconds
     while time.time() < end:
@@ -174,12 +198,16 @@ class Browser:
         if not is_captcha(self.page):
             return
         if not wait_out_captcha(self.page, captcha_wait):
-            raise SystemExit(BLOCKED_MSG.format(host=self.host))
+            self.blocked()
         # The cleared challenge doesn't redirect back, so load the target again.
         self.page.goto(url, wait_until="domcontentloaded")
         time.sleep(3)
         if is_captcha(self.page):
-            raise SystemExit(BLOCKED_MSG.format(host=self.host))
+            self.blocked()
+
+    def blocked(self):
+        log(BLOCKED_MSG.format(host=self.host))
+        raise SystemExit(BLOCKED_EXIT)
 
 
 # --- search ----------------------------------------------------------------
@@ -189,6 +217,8 @@ def yymmdd(d):
 
 
 def search_path(a):
+    if a.legs:
+        return multi_city_path(a)
     o, d = a.origin.lower(), a.dest.lower()
     path = f"/transport/flights/{o}/{d}/{yymmdd(a.depart)}/"
     if a.return_date:
@@ -199,8 +229,19 @@ def search_path(a):
     return path + "?" + "&".join(q)
 
 
+def multi_city_path(a):
+    """Multi-city URL: /transport/d/<from>/<YYYY-MM-DD>/<to>/ repeated per leg."""
+    path = "/transport/d/" + "".join(
+        f"{o.lower()}/{datetime.strptime(d, '%Y-%m-%d'):%Y-%m-%d}/{t.lower()}/" for o, t, d in a.legs
+    )
+    q = [f"adultsv2={a.adults}", f"cabinclass={a.cabin}", "rtn=0", "preferdirects=false"]
+    if a.children:
+        q.append("childrenv2=" + "|".join(x.strip() for x in a.children.split(",")))
+    return path + "?" + "&".join(q)
+
+
 LEG_RE = re.compile(
-    r"(?:(Outbound|Inbound) flight|Flight) with (?P<airlines>[^.]+)\.\s*"
+    r"(?:(Outbound|Inbound) flight|Leg number (?P<legno>\d+)|Flight) with (?P<airlines>[^.]+)\.\s*"
     r"Departing from (?P<from>.+?) at (?P<dep>\d{1,2}:\d{2}), arriving in (?P<to>.+?) at (?P<arr>\d{1,2}:\d{2})"
     r"(?:, (?P<later>one day|two days|\w+ days) later)?\.\s*"
     r"(?P<kind>Direct|Indirect) flight taking (?P<dur>[^.]+?)(?: with (?P<nstops>\d+|one|two|three|four|five|a) stops? in (?P<via>[^.]+))?\.",
@@ -236,10 +277,14 @@ def parse_option(text, href):
         "price_value": price_value(m.group(3)),
         "legs": [],
     }
+    # Only shown with 2+ travellers. Sentences are ". "-separated; "11.903 €" has no space.
+    pp = re.search(r"(?:^|\.\s)((?:(?!\.\s).)+?) per passenger\.", pre)
+    if pp:
+        opt["per_passenger"] = pp.group(1).replace("\xa0", " ").strip()
     for lm in LEG_RE.finditer(text):
         later = lm.group("later")
         opt["legs"].append({
-            "direction": (lm.group(1) or "outbound").lower(),
+            "direction": f"leg {lm.group('legno')}" if lm.group("legno") else (lm.group(1) or "outbound").lower(),
             "airlines": lm.group("airlines").strip(),
             "from": lm.group("from").strip(),
             "to": lm.group("to").strip(),
@@ -339,7 +384,8 @@ def extract_options(page):
         if key in seen:
             continue
         seen.add(key)
-        o = parse_option(c["text"], key)
+        # Keep the query: without adultsv2/cabinclass the deals page prices 1 adult in economy.
+        o = parse_option(c["text"], c["href"])
         if o:
             opts.append(o)
     # Ads link off-site (no /config/), so pick them up from the page text too.
@@ -390,7 +436,7 @@ def render_search(r):
               + (f", {s.get('total_results')} results" if s.get("total_results") else ""))
     for o in r["options"]:
         legs = " | ".join(
-            f"{l['direction'][:3]} {l['depart']}-{l['arrive']} {l['duration']} "
+            f"{l['direction'] if l['direction'].startswith('leg') else l['direction'][:3]} {l['from']}->{l['to']} {l['depart']}-{l['arrive']} {l['duration']} "
             f"{'direct' if not l['stops'] else str(l['stops']) + ' stop via ' + '/'.join(l['via'])} ({l['airlines']})"
             for l in o["legs"]
         )
@@ -537,6 +583,7 @@ def parse_deals(body):
             l for l in lines
             if l not in skip and not re.fullmatch(r"[\d.,/ ]+(?:/5)?", l) and not l.endswith("/5")
         ]
+        per_person = next((f for f in features if f.endswith(" per person.")), None)
         out.append({
             "option": int(head.group(1)),
             "seller": seller,
@@ -546,7 +593,8 @@ def parse_deals(body):
             "reviews": int(re.sub(r"[^\d]", "", rating.group(2))) if rating else None,
             "price": price.group(1).strip(),
             "price_value": price_value(price.group(1)),
-            "features": [f for f in features if f != "Recommended provider"],
+            "per_person": per_person[: -len(" per person.")] if per_person else None,
+            "features": [f for f in features if f not in ("Recommended provider", per_person)],
         })
     return out
 
@@ -588,13 +636,16 @@ def main():
         sp.add_argument("--json", action="store_true")
         sp.add_argument("--timeout", type=int, default=180, help="Hard limit in seconds, excluding --captcha-wait")
         sp.add_argument("--captcha-wait", type=int, default=0,
-                        help="Seconds to wait for a human to clear a CAPTCHA in the window (0 = fail fast)")
+                        help="Seconds to wait for a human to clear a CAPTCHA in the window (0 = fail fast, "
+                             f"exit {BLOCKED_EXIT}). Only pass it after the user has said they are at the machine.")
 
     s = sub.add_parser("search")
     common(s)
-    s.add_argument("--origin", required=True)
-    s.add_argument("--dest", required=True)
-    s.add_argument("--depart", required=True, help="YYYY-MM-DD")
+    s.add_argument("--origin")
+    s.add_argument("--dest")
+    s.add_argument("--depart", help="YYYY-MM-DD")
+    s.add_argument("--leg", dest="legs", nargs=3, action="append", metavar=("FROM", "TO", "DATE"),
+                   help="Multi-city / open-jaw leg, repeat 2-6 times instead of --origin/--dest/--depart/--return")
     s.add_argument("--return", dest="return_date", help="YYYY-MM-DD")
     s.add_argument("--adults", type=int, default=1)
     s.add_argument("--children", help="Comma-separated ages, e.g. 5,9")
@@ -613,9 +664,21 @@ def main():
     d = sub.add_parser("deals")
     common(d)
     d.add_argument("--url", required=True, help="deals_url from a search result")
-    d.set_defaults(captcha_wait=120)
 
     a = p.parse_args()
+    if a.cmd == "search":
+        if a.legs:
+            if any((a.origin, a.dest, a.depart, a.return_date)):
+                p.error("--leg can't be combined with --origin/--dest/--depart/--return")
+            if not 2 <= len(a.legs) <= 6:
+                p.error("multi-city needs 2-6 --leg")
+            for _, _, d in a.legs:
+                try:
+                    datetime.strptime(d, "%Y-%m-%d")
+                except ValueError:
+                    p.error(f"--leg date must be YYYY-MM-DD, got {d}")
+        elif not (a.origin and a.dest and a.depart):
+            p.error("search needs --origin, --dest and --depart, or 2-6 --leg FROM TO DATE")
 
     def on_timeout(*_):
         raise SystemExit(f"TIMEOUT: Skyscanner did not finish within {a.timeout}s. Retry later.")

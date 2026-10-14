@@ -31,7 +31,7 @@ The script runs headed (a Chrome window appears while it works; this is required
 
 ## Commands
 
-All commands accept `--market XX` (default `UK`), `--json`, and `--captcha-wait N`.
+All commands accept `--market XX` (default `UK`), `--json`, and `--captcha-wait N` (default 0: fail fast with exit code 3 if a CAPTCHA appears; see [When Skyscanner blocks you](#when-skyscanner-blocks-you)).
 
 ```bash
 PY=~/.cache/travel-hacking-toolkit/venv/bin/python
@@ -39,6 +39,9 @@ S=skills/skyscanner/scripts/skyscanner.py
 
 # Results list (one-way or round trip), cheapest first
 $PY $S search --origin LAX --dest HNL --depart 2026-11-20 --return 2026-11-27 --market US --json
+
+# Multi-city / open-jaw: repeat --leg FROM TO DATE, 2-6 legs, instead of --origin/--dest/--depart/--return
+$PY $S search --leg JFK LAX 2026-11-20 --leg SFO JFK 2026-11-27 --adults 2 --market US --json
 
 # Options: --adults 2 --children 5,9 --cabin economy|premiumeconomy|business|first
 #          --sort cheapest|best|fastest --limit 15
@@ -53,16 +56,32 @@ $PY $S deals --url "<deals_url>" --market US --json
 ### What `search` returns
 
 - `summary`: Skyscanner's Best / Cheapest / Fastest headline prices and the total result count. The Cheapest headline often belongs to a long self-transfer itinerary further down the list, so check it before quoting.
-- `options[]`: per itinerary, the total price, legs (times, `+1` for next-day arrival, stops, via-airports, duration, airlines), `deals` (how many sellers price it), `self_transfer`, and `deals_url`.
+- `options[]`: per itinerary, the total price (for all travelers; `per_passenger` too when there are 2+), legs (`direction` is `outbound`/`inbound` for one-way, round trips and 2-leg multi-city, `leg 1`, `leg 2`... for 3+ legs; `from`/`to` airport names, times, `+1` for next-day arrival, stops, via-airports, duration, airlines), `deals` (how many sellers price it), `self_transfer`, and `deals_url`.
 - `sponsored[]`: airline ads pinned to the top. They are not ranked results. Leave them out of the comparison unless they happen to be the cheapest real option.
 
 Results stream in for 10-30 seconds; the script waits for the list to stop growing. A search takes about 40-60 seconds.
 
 ### What `deals` returns
 
-Every seller for that itinerary, cheapest first: `seller`, `price`, `seller_type` (`airline` when it's the carrier actually flying the ticket, `partner airline` when another airline resells it, otherwise `agency`), `rating` and `reviews` (Skyscanner's 1-5 provider score and review count), `recommended`, and `features`: the provider's selling points and warnings, e.g. "Change booking for a fee", "Upgrade to make booking changes", "Self-transfer", "Transfer protection included", "Buy now, pay later". It also returns the flight numbers, `cheapest`, and `cheapest_airline_direct` (null when the operating airline doesn't sell the itinerary on Skyscanner; then get the airline's own price from Duffel, Ignav or Google Flights). The deals page defaults to `--captcha-wait 120`: if the CAPTCHA appears, tell the user **"A Chrome window opened on Skyscanner. Press and hold the button until it clears."** and let the command run. Do not attempt to solve CAPTCHAs programmatically.
+Every seller for that itinerary, cheapest first: `seller`, `price`, `seller_type` (`airline` when it's the carrier actually flying the ticket, `partner airline` when another airline resells it, otherwise `agency`), `rating` and `reviews` (Skyscanner's 1-5 provider score and review count), `recommended`, `per_person` (with 2+ travelers), and `features`: the provider's selling points and warnings, e.g. "Change booking for a fee", "Upgrade to make booking changes", "Self-transfer", "Transfer protection included", "Buy now, pay later". It also returns the flight numbers, `cheapest`, and `cheapest_airline_direct` (null when the operating airline doesn't sell the itinerary on Skyscanner; then get the airline's own price from Duffel, Ignav or Google Flights). The deals page is guarded harder than search and often blocks the first time on a domain; handle it as in [When Skyscanner blocks you](#when-skyscanner-blocks-you).
 
 Run `deals` for the 1-3 itineraries you're actually going to recommend, not for every row. Each one costs a page load and raises the CAPTCHA risk.
+
+## When Skyscanner blocks you
+
+The user cannot see anything you print while a command is running, and they cannot see the script's stderr at all. A long `--captcha-wait` started without warning them just sits there until it times out. So never wait for a CAPTCHA silently, and never give up on Skyscanner because nobody pressed the button. Ask first, then wait.
+
+When a command exits with code 3 / `BLOCKED: Skyscanner served a CAPTCHA on <host>`:
+
+1. **Stop and ask the user, right away.** Don't end your turn with a summary and a "reply go when ready". Use your ask-the-user tool (`AskUserQuestion` in Claude Code; in other agents, a direct question as the last line of your turn), e.g.:
+   > Skyscanner is showing a "Press & Hold" CAPTCHA on skyscanner.com.my. When you pick **Ready**, I'll reopen Chrome and wait up to 5 minutes. The window comes to the front and you'll get a notification: press and hold the button until it turns green.
+   >
+   > Options: **Ready, open it** / **Skip Skyscanner for this search**
+2. **On "Ready", rerun the exact same command with `--captcha-wait 300`** and set the shell tool's timeout to cover it: `--timeout` (180) + `--captcha-wait` (300) + ~30 s, i.e. about 510 000 ms in Claude Code's Bash tool (its default of 120 s would kill the run mid-wait).
+3. **If it blocks again**, ask once more ("It's still showing the challenge. Try again?"). After two failed rounds, or if the user picks Skip, drop Skyscanner for this search, say so, and fall back to Kiwi.com for agency-style fares.
+4. **Then carry on with the rest of the queue without asking again.** Clearance is stored per domain in the profile, so later searches on the same market usually pass. A new market (a new domain) may block once more: ask again for that one.
+
+Planning several markets? Mention it in the first ask ("this may come up once per country site: MY, TH, SG, ES") so the user stays at the machine. Don't ask before trying: many runs pass without a challenge.
 
 ## Market selection
 
@@ -93,7 +112,7 @@ Then say plainly what the agency discount buys and what it costs:
 
 | Symptom                                                | What to do                                                                                                                                                        |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BLOCKED: Skyscanner served a CAPTCHA` on search/month | Rerun once with `--captcha-wait 120` and ask the user to press & hold. If they're not around, skip Skyscanner, say it was blocked, and rely on the other sources. |
+| `BLOCKED: Skyscanner served a CAPTCHA` (exit code 3)  | Follow [When Skyscanner blocks you](#when-skyscanner-blocks-you): ask the user first, then rerun with `--captcha-wait 300`. Skip Skyscanner only if the user says so or two rounds fail. |
 | Sort tab click fails (stderr note)                     | Harmless. The script sorts the loaded options by price itself, but the very cheapest fare may not be among them. Compare against `summary.cheapest`.              |
 | `deals` parses no rows                                 | The layout probably changed. Read the raw text path in the output and extract sellers manually.                                                                   |
 | Wrong currency / language                              | A stale `ssculture` cookie in the profile. Delete the profile directory and rerun.                                                                                |
@@ -102,6 +121,6 @@ Then say plainly what the agency discount buys and what it costs:
 ## Limits
 
 - No booking. Search only.
-- Multi-city isn't supported by the script. Use google-flights for that.
+- Multi-city has no month view. To compare dates on an open-jaw, run one `search` per date pair.
 - The month view is one-way outbound only.
 - Skyscanner prices are meta-search quotes. The OTA's checkout can come out higher (bags, seats, "service fees"). Treat the deals-page price as the floor.
