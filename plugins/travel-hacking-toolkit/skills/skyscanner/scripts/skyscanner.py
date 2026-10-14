@@ -9,7 +9,9 @@ harder and usually needs a human to press & hold once; after that the
 clearance cookie lives in the persistent profile and later runs pass.
 
 Requires the shared venv: ~/.cache/travel-hacking-toolkit/venv (see SKILL.md Setup)
-Must run headed. A Chrome window appears while the script runs.
+Must run headed. Runs share one Chrome started in the background (never focused
+unless a CAPTCHA needs the user); each run uses its own tab. SKYSCANNER_SHARED_BROWSER=0
+opens a fresh foreground window per run instead.
 
 Usage:
     skyscanner.py search --origin LAX --dest HNL --depart 2026-11-20 [--return 2026-11-27]
@@ -19,6 +21,7 @@ Usage:
                          (multi-city / open-jaw, 2-6 legs)
     skyscanner.py month --origin LAX --dest HNL --month 2026-11 [--market US] [--json]
     skyscanner.py deals  --url <config URL from search output> [--market US] [--json]
+    skyscanner.py close  (quit the shared background Chrome)
 
 All commands fail fast (exit 3, "BLOCKED: ...") when a CAPTCHA appears. Ask the
 user to stand by, then rerun with --captcha-wait 300.
@@ -33,6 +36,7 @@ import signal
 import subprocess
 import sys
 import time
+import urllib.request
 from datetime import date, datetime
 
 from patchright.sync_api import sync_playwright
@@ -40,6 +44,9 @@ from patchright.sync_api import sync_playwright
 PROFILE_DIR = os.path.expanduser(
     os.environ.get("SKYSCANNER_PROFILE", "~/.cache/travel-hacking-toolkit/skyscanner-profile")
 )
+SHARED_BROWSER = os.environ.get("SKYSCANNER_SHARED_BROWSER", "1") != "0"
+CDP_PORT = int(os.environ.get("SKYSCANNER_CDP_PORT", "9337"))
+CDP_URL = f"http://127.0.0.1:{CDP_PORT}"
 
 # market code -> (Skyscanner host, default currency). Unknown markets fall
 # back to following Skyscanner's own redirect from skyscanner.net.
@@ -150,7 +157,80 @@ def wait_out_captcha(page, seconds):
     return False
 
 
+def cdp_up():
+    try:
+        urllib.request.urlopen(f"{CDP_URL}/json/version", timeout=1).close()
+        return True
+    except Exception:
+        return False
+
+
+def profile_owner():
+    """PID of the Chrome that has the profile open, or None. Chrome keeps a SingletonLock
+    symlink pointing at "<hostname>-<pid>" while it runs."""
+    try:
+        pid = int(os.readlink(os.path.join(PROFILE_DIR, "SingletonLock")).rsplit("-", 1)[-1])
+        os.kill(pid, 0)
+        return pid
+    except PermissionError:
+        return pid
+    except (OSError, ValueError):
+        return None
+
+
+def launch_shared_browser(executable):
+    """Start Chrome once, in the background, with a DevTools port so later runs reuse it.
+    The flags mirror the ones Patchright passes itself (mock keychain matters: the
+    profile's cookies, CAPTCHA clearance included, are encrypted with it). On macOS,
+    `open -g` plus --no-startup-window keeps Chrome from taking focus."""
+    args = [
+        f"--user-data-dir={PROFILE_DIR}", f"--remote-debugging-port={CDP_PORT}",
+        "--no-startup-window", "--no-first-run", "--no-default-browser-check",
+        "--password-store=basic", "--use-mock-keychain", "--disable-sync",
+        "--disable-search-engine-choice-screen", "--disable-blink-features=AutomationControlled",
+        # The window sits behind other apps; don't let Chrome throttle it.
+        "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding",
+        "--disable-background-timer-throttling",
+    ]
+    if sys.platform == "darwin" and ".app/Contents/MacOS/" in executable:
+        app = executable.split(".app/Contents/MacOS/")[0] + ".app"
+        subprocess.run(["open", "-g", "-n", "-a", app, "--args", *args], check=True)
+    else:
+        subprocess.Popen([executable, *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+    log(f"started shared Chrome in the background (port {CDP_PORT})")
+
+
+def ensure_shared_browser(executable):
+    """Reuse the shared Chrome, or start it. If a Chrome without the DevTools port holds the
+    profile (a SKYSCANNER_SHARED_BROWSER=0 run, or an older copy of this script), a new
+    Chrome would just hand off to it and exit, so wait for that one to finish first.
+    A parallel run that is starting the shared Chrome also holds the lock; its port opens
+    within seconds and ends the wait. The overall --timeout still bounds all of this."""
+    if cdp_up():
+        return
+    started, waited_on = None, None
+    while not cdp_up():
+        owner = profile_owner()
+        if started is None and owner is None:
+            launch_shared_browser(executable)
+            started = time.time()
+        elif started is None and owner != waited_on:
+            log(f"profile is open in another Chrome (pid {owner}) without the shared-browser port, "
+                "probably a run with SKYSCANNER_SHARED_BROWSER=0; waiting for it to finish")
+            waited_on = owner
+        elif started and time.time() - started > 15:  # normally ~2s
+            raise SystemExit(f"Shared Chrome did not open port {CDP_PORT} within 15s. "
+                             f"Run `skyscanner.py close` and retry, or set SKYSCANNER_SHARED_BROWSER=0.")
+        time.sleep(0.2)
+    time.sleep(1)  # connecting the instant the port opens fails with a context error
+
+
 class Browser:
+    """By default every run opens a background tab in one long-lived Chrome, so searches
+    don't pop a window in front of whatever the user is doing. Quit it with `close`.
+    SKYSCANNER_SHARED_BROWSER=0 launches a fresh window per run instead (old behaviour)."""
+
     def __init__(self, market):
         self.market = (market or "UK").upper()
         self.host, self.currency = MARKETS.get(self.market, ("www.skyscanner.net", None))
@@ -158,17 +238,48 @@ class Browser:
     def __enter__(self):
         os.makedirs(PROFILE_DIR, exist_ok=True)
         self._pw = sync_playwright().start()
-        self.ctx = self._pw.chromium.launch_persistent_context(
-            PROFILE_DIR, headless=False, no_viewport=True
-        )
+        if SHARED_BROWSER:
+            ensure_shared_browser(self._pw.chromium.executable_path)
+            self._browser = self._pw.chromium.connect_over_cdp(CDP_URL)
+            self.ctx = self._browser.contexts[0]
+            # A background target never activates Chrome; ctx.new_page() would when it has
+            # to create the first window.
+            target = self._browser.new_browser_cdp_session().send(
+                "Target.createTarget",
+                {"url": "about:blank", "newWindow": not self.ctx.pages, "background": True},
+            )["targetId"]
+            self.page = self._own_page(target)
+        else:
+            self.ctx = self._pw.chromium.launch_persistent_context(
+                PROFILE_DIR, headless=False, no_viewport=True
+            )
+            self.page = self.ctx.pages[0] if self.ctx.pages else self.ctx.new_page()
         if self.currency:
             self.ctx.add_cookies([culture_cookie(self.host, self.market, self.currency)])
-        self.page = self.ctx.pages[0] if self.ctx.pages else self.ctx.new_page()
         return self
+
+    def _own_page(self, target_id):
+        """Find our tab by target id. Other runs (other agent sessions too) open tabs in the
+        same browser concurrently, so "the next new page" may not be ours."""
+        for _ in range(50):
+            for pg in self.ctx.pages:
+                try:
+                    cdp = self.ctx.new_cdp_session(pg)
+                    info = cdp.send("Target.getTargetInfo")
+                    cdp.detach()
+                except Exception:
+                    continue
+                if info["targetInfo"]["targetId"] == target_id:
+                    return pg
+            time.sleep(0.1)
+        raise SystemExit("Could not attach to the new tab in the shared Skyscanner browser.")
 
     def __exit__(self, *exc):
         try:
-            self.ctx.close()
+            # Shared mode: close only our tab and leave Chrome running for the next search.
+            (self.page if SHARED_BROWSER else self.ctx).close()
+        except Exception:
+            pass
         finally:
             self._pw.stop()
 
@@ -618,6 +729,17 @@ def render_deals(r):
         print(f"No deal rows parsed. Raw page text saved to {r['raw_text']}.")
 
 
+# --- close -----------------------------------------------------------------
+
+def cmd_close(a):
+    if not cdp_up():
+        print("No shared Skyscanner browser running.")
+        return
+    with sync_playwright() as pw:
+        pw.chromium.connect_over_cdp(CDP_URL).new_browser_cdp_session().send("Browser.close")
+    print("Closed the shared Skyscanner browser.")
+
+
 # --- main ------------------------------------------------------------------
 
 def emit(result, as_json, renderer):
@@ -665,6 +787,9 @@ def main():
     common(d)
     d.add_argument("--url", required=True, help="deals_url from a search result")
 
+    c = sub.add_parser("close", help="Quit the shared background Chrome")
+    common(c)
+
     a = p.parse_args()
     if a.cmd == "search":
         if a.legs:
@@ -684,7 +809,7 @@ def main():
         raise SystemExit(f"TIMEOUT: Skyscanner did not finish within {a.timeout}s. Retry later.")
     signal.signal(signal.SIGALRM, on_timeout)
     signal.alarm(a.timeout + max(a.captcha_wait, 0))
-    {"search": cmd_search, "month": cmd_month, "deals": cmd_deals}[a.cmd](a)
+    {"search": cmd_search, "month": cmd_month, "deals": cmd_deals, "close": cmd_close}[a.cmd](a)
 
 
 if __name__ == "__main__":

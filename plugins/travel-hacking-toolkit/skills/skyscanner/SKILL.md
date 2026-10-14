@@ -27,7 +27,7 @@ python3 -m venv ~/.cache/travel-hacking-toolkit/venv
 
 Run every command with that interpreter (`$PY` below). If `$PY` doesn't exist, create the venv first rather than falling back to system `python3`, where the import will fail.
 
-The script runs headed (a Chrome window appears while it works; this is required, as headless gets blocked). It keeps a persistent browser profile at `~/.cache/travel-hacking-toolkit/skyscanner-profile` (override with `SKYSCANNER_PROFILE`) so that a CAPTCHA cleared once keeps working for later runs.
+The script runs headed (headless gets blocked), but it doesn't get in the user's way: the first run starts one Chrome in the background without taking focus, and every run after that, parallel runs included, opens its own background tab in that same browser and closes it when done. Chrome stays open between searches and only comes to the front when a CAPTCHA needs the user. It uses a persistent profile at `~/.cache/travel-hacking-toolkit/skyscanner-profile` (override with `SKYSCANNER_PROFILE`) so that a CAPTCHA cleared once keeps working for later runs. The browser is controlled through a DevTools port on 127.0.0.1:9337 (override with `SKYSCANNER_CDP_PORT`). Quit it with `$PY $S close` when the user is done with flight searching. `SKYSCANNER_SHARED_BROWSER=0` restores the old behaviour: a fresh foreground window per run.
 
 ## Commands
 
@@ -51,6 +51,9 @@ $PY $S month --origin LAX --dest HNL --month 2026-11 --market US --json
 
 # Who sells a specific itinerary (deals_url comes from the search output)
 $PY $S deals --url "<deals_url>" --market US --json
+
+# Quit the shared background Chrome
+$PY $S close
 ```
 
 ### What `search` returns
@@ -116,6 +119,7 @@ Then say plainly what the agency discount buys and what it costs:
 | Sort tab click fails (stderr note)                     | Harmless. The script sorts the loaded options by price itself, but the very cheapest fare may not be among them. Compare against `summary.cheapest`.              |
 | `deals` parses no rows                                 | The layout probably changed. Read the raw text path in the output and extract sellers manually.                                                                   |
 | Wrong currency / language                              | A stale `ssculture` cookie in the profile. Delete the profile directory and rerun.                                                                                |
+| `Shared Chrome did not open port ... within 15s`      | Rare (startup normally takes ~2s). Run `close` and retry once; if it fails again, rerun with `SKYSCANNER_SHARED_BROWSER=0`.                                        |
 | `TIMEOUT`                                              | The script has a hard limit (`--timeout`, default 180s, plus `--captcha-wait`). Retry once; if it times out again, skip Skyscanner for this search.               |
 
 ## Limits
