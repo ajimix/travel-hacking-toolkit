@@ -20,7 +20,7 @@ Usage:
     skyscanner.py search --leg JFK LAX 2026-11-20 --leg SFO JFK 2026-11-27 [same options]
                          (multi-city / open-jaw, 2-6 legs)
     skyscanner.py month --origin LAX --dest HNL --month 2026-11 [--market US] [--json]
-    skyscanner.py deals  --url <config URL from search output> [--market US] [--json]
+    skyscanner.py deals  --url <deals_url from search output> [--market US] [--json]
     skyscanner.py close  (quit the shared background Chrome)
 
 All commands fail fast (exit 3, "BLOCKED: ...") when a CAPTCHA appears. Ask the
@@ -433,13 +433,17 @@ def price_value(s):
     except ValueError:
         return None
 
+# Skyscanner links results as /transport/flights/.../itinerary/<token> (seen Nov 2026); older pages use /config/.
+ITINERARY_LINKS = "a[href*='/itinerary/'], a[href*='/config/']"
+
+
 
 def wait_for_results(page):
     """Skyscanner streams in prices for ~10-30s. Wait until option count stops changing."""
     last, stable, start = -1, 0, time.time()
     while time.time() - start < RESULT_SETTLE_MAX:
         time.sleep(2)
-        n = page.locator("a[href*='/config/']").count()
+        n = page.locator(ITINERARY_LINKS).count()
         body = page.inner_text("body")
         done = re.search(r"\d+ results sorted by", body) is not None
         stable = stable + 1 if n == last and n > 0 else 0
@@ -482,7 +486,7 @@ def extract_summary(body):
 
 def extract_options(page):
     cards = page.eval_on_selector_all(
-        "a[href*='/config/']",
+        ITINERARY_LINKS,
         """els => els.map(a => {
             let el = a;
             for (let i = 0; i < 8 && el && !/Flight option \\d+:/.test(el.innerText || ''); i++) el = el.parentElement;
@@ -499,7 +503,7 @@ def extract_options(page):
         o = parse_option(c["text"], c["href"])
         if o:
             opts.append(o)
-    # Ads link off-site (no /config/), so pick them up from the page text too.
+    # Ads link off-site (no itinerary path), so pick them up from the page text too.
     body = page.inner_text("body")
     for chunk in re.split(r"(?=Flight option \d+:)", body)[1:]:
         if any(mk in chunk[:200] for mk in AD_MARKERS):
