@@ -162,8 +162,10 @@ Start here: the **orchestration skills** call everything else automatically.
 <!-- BEGIN: readme:orchestration -->
 | Skill | What It Does | API Key |
 |-------|-------------|---------|
+| **gardening** | Audit existing reservations for price drops, better cabins, schedule changes, and improved routings. | Uses individual skill keys |
 | **getting-started** | First-run onboarding. Detects setup, points to setup-keys script, shows sample prompts. | None |
 | **plan-trip** | Guided trip planner. The hero command for the toolkit. | None |
+| **trip-log** | Opt-in trip journal. Save searches and booked trips to trips/logs/ for future reference. | None |
 | **trip-planner** | Full trip planning. Flights + hotels + points in one shot. | Uses individual skill keys |
 <!-- END: readme:orchestration -->
 
