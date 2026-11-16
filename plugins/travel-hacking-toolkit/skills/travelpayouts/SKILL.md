@@ -1,6 +1,6 @@
 ---
 name: travelpayouts
-description: Cheapest-fare discovery from the Travelpayouts (Aviasales) Data API — CACHED prices from recent user searches, not live inventory. Use for flexible-date and "cheapest month/day to fly" questions, price calendars, "where can I fly cheaply from X" (anywhere) searches, and as an extra price reference alongside live sources in any flight search. Triggers on "when is it cheapest to fly", "cheapest dates in November", "I'm flexible", "cheap flights from BCN anywhere", "price calendar", or any flight search where a cheap-date hint would help. Never present its prices as bookable quotes without confirming on a live source.
+description: Cheapest-fare discovery from the Travelpayouts (Aviasales) Data API — CACHED prices from recent user searches, not live inventory. Use for flexible-date and "cheapest month/day to fly" questions, price calendars, "where can I fly cheaply from X" (anywhere) searches, and as a cached price reference alongside live sources. Triggers on "when is it cheapest to fly", "cheapest dates in November", "I'm flexible", "cheap flights from BCN anywhere", "price calendar", or any flight search. **Always include in every flight search** — runs in parallel with other sources. Never present its prices as bookable quotes without confirming on a live source.
 category: flights
 summary: Cached Aviasales fare data. Cheapest-date calendars, flexible-month and anywhere searches.
 api_key: Travelpayouts (free)
@@ -21,6 +21,15 @@ Everything this API returns comes from a **cache of searches Aviasales users ran
 - **Never present a Travelpayouts price as "the price".** Label it "cached, seen N days ago" and confirm it on a live source (Duffel, Ignav, google-flights) before recommending a booking.
 
 So what's it for? **Discovery.** It's great at answering "which day/month is cheapest?" and "where can I go cheaply?" in a single call, which the live sources can't do without dozens of searches. Find the cheap date here, then price that date live.
+
+## In every flight search
+
+Run it in the same parallel batch as the live sources, even when the user gave fixed dates. Two calls are enough:
+
+1. `prices_for_dates` for the exact requested date(s), as a cached reference price next to the live quotes.
+2. `grouped_prices` with `group_by=departure_at` for the departure month, to spot cheaper days around the requested date.
+
+If a nearby day is meaningfully cheaper, say so ("cached data shows Tue 10 Nov ~€40 cheaper than Fri 13 Nov") and price that day on a live source in the same answer. If the cache is empty for the route, say so in one line and move on. Empty results never mean there's no service.
 
 ## Authentication
 
@@ -43,16 +52,16 @@ curl -s -H "X-Access-Token: $TRAVELPAYOUTS_TOKEN" \
   "https://api.travelpayouts.com/aviasales/v3/prices_for_dates?origin=BCN&destination=LON&departure_at=2026-11&one_way=true&currency=eur&sorting=price&limit=10"
 ```
 
-| Param                       | Notes                                                                                                                                                 |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `origin`, `destination`     | IATA airport or city code. **Leave out `destination` for an "anywhere" search** (cheapest destinations from the origin).                              |
-| `departure_at`, `return_at` | `YYYY-MM-DD` or `YYYY-MM` (whole month). Add `return_at` + `one_way=false` for round trips.                                                           |
-| `one_way`                   | `true` for one-way. For round trips, set `false` and pass `return_at`.                                                                                |
-| `direct`                    | `true` = nonstop only.                                                                                                                                |
+| Param                       | Notes                                                                                                                                                                                                                                                                                                    |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `origin`, `destination`     | IATA airport or city code. **Leave out `destination` for an "anywhere" search** (cheapest destinations from the origin).                                                                                                                                                                                 |
+| `departure_at`, `return_at` | `YYYY-MM-DD` or `YYYY-MM` (whole month). Add `return_at` + `one_way=false` for round trips.                                                                                                                                                                                                              |
+| `one_way`                   | `true` for one-way. For round trips, set `false` and pass `return_at`.                                                                                                                                                                                                                                   |
+| `direct`                    | `true` = nonstop only.                                                                                                                                                                                                                                                                                   |
 | `market`                    | Lowercase country code (`es`, `us`, `th`…). Defaults to `ru` when omitted, so **always set it explicitly** to the departure country first, per the Market Selection Strategy in CLAUDE.md. Differences between markets are usually small (a different cached seller), much smaller than on live sources. |
-| `sorting`                   | `price` (default) or `route`.                                                                                                                         |
-| `limit`, `page`             | Up to 1000 per page.                                                                                                                                  |
-| `currency`                  | **Always set it.** See above.                                                                                                                         |
+| `sorting`                   | `price` (default) or `route`.                                                                                                                                                                                                                                                                            |
+| `limit`, `page`             | Up to 1000 per page.                                                                                                                                                                                                                                                                                     |
+| `currency`                  | **Always set it.** See above.                                                                                                                                                                                                                                                                            |
 
 Response: `data[]` with `price`, `airline`, `flight_number`, `origin_airport`, `destination_airport`, `departure_at` (local time with offset), `return_at`, `transfers`, `return_transfers`, `duration` (total), `duration_to`, `duration_back` (minutes), `gate` (the seller: Kiwi.com, Trip.com, easyJet…; sometimes Cyrillic, e.g. "Авиасейлс" = Aviasales), and `link`. Times carry their local offset, so UK and Portugal show `Z` in winter. That's correct.
 
@@ -123,7 +132,7 @@ Below all live sources for price accuracy: **Duffel > Airline > Ignav > google-f
 - When the user is flexible, run `grouped_prices` with `group_by=departure_at` first, then live-search the 2–3 cheapest days.
 - For "cheapest month this year", use `grouped_prices` with `group_by=month`.
 - For "anywhere cheap from X in <month>", use `prices_for_dates` without `destination`, sorted by price.
-- **For weekend trips, use exact dates.** Month-level `departure_at`/`return_at` returns trips of any length (4–20 days), which is useless for a weekend. Query exact Fri→Sun dates (`departure_at=2026-12-11&return_at=2026-12-13&one_way=false`) for 2–3 candidate weekends, and compare. Watch for holidays and long weekends that push prices up, like Spanish *puentes*, and suggest the next weekend if one is inflated.
+- **For weekend trips, use exact dates.** Month-level `departure_at`/`return_at` returns trips of any length (4–20 days), which is useless for a weekend. Query exact Fri→Sun dates (`departure_at=2026-12-11&return_at=2026-12-13&one_way=false`) for 2–3 candidate weekends, and compare. Watch for holidays and long weekends that push prices up, like Spanish _puentes_, and suggest the next weekend if one is inflated.
 - Sparse results (`success: true` with only 1–3 items) are more common than fully empty ones, and the same caveat applies: they show low search volume, not low availability.
 - **Run shell loops under `bash -c '...'`.** The user's shell may be fish, where bash loop syntax fails silently.
 - A suspiciously low fare (e.g. €15) is usually a real ULCC promo, but it's the most likely to have sold out. Verify it.

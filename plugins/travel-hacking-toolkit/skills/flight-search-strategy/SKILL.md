@@ -11,21 +11,22 @@ summary: The canonical multi-source search workflow. Source priority (Duffel > I
 
 This is not a pick-one list. Each source returns different results, different prices, and different airlines. Missing a source means missing options. The priority order determines which price to trust when sources disagree, not which sources to skip.
 
-| Priority | Source | Strengths | Blind Spots |
-|----------|--------|-----------|-------------|
-| 1 | **Duffel** (skill) | Most accurate cash prices. Real GDS per-fare-class data. Bookable. | No Southwest. No award pricing. Offers expire in 15-30 min. |
-| 2 | **Ignav** (skill) | Fast REST API. Market selection for price arbitrage. Free. | No Southwest. No award pricing. |
-| 3 | **Google Flights** (skill, agent-browser) | Covers ALL airlines including Southwest cash prices. Free. Economy/business comparison. | Prices can be inflated vs GDS. No points pricing. |
-| 4 | **Skiplagged** (MCP) | Hidden city fares. Zero config. | No Southwest. Can be noisy on small markets. |
-| 5 | **Kiwi.com** (MCP) | Virtual interlining (creative cross-airline routings). Zero config. | Returns garbage on small markets. No Southwest. |
-| — | **Travelpayouts** (skill) | Cheapest-day/month calendars and anywhere search in one call. Free. | **Cached** (1–7 days old), not bookable. Discovery only; verify live. |
-| 6 | **Seats.aero** (skill) | Award flight availability across 25+ programs. The crown jewel for points. | Cached data, not live. No cash prices. No Southwest. |
-| 7 | **SerpAPI** (skill, optional) | Google Hotels search. Destination discovery (Google Travel Explore). | NOT for flights (inflated prices). Hotels and "where should I go?" only. |
-| 8 | **Southwest** (skill, Patchright) | Fare classes, points pricing, Companion Pass. All 4 fare classes, cash + points. | Pre-built Docker image: `ghcr.io/borski/sw-fares`. Or local Patchright (headed mode). ~20s per search. |
+| Priority | Source                                    | Strengths                                                                                                             | Blind Spots                                                                                            |
+| -------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 1        | **Duffel** (skill)                        | Most accurate cash prices. Real GDS per-fare-class data. Bookable.                                                    | No Southwest. No award pricing. Offers expire in 15-30 min.                                            |
+| 2        | **Ignav** (skill)                         | Fast REST API. Market selection for price arbitrage. Free.                                                            | No Southwest. No award pricing.                                                                        |
+| 3        | **Google Flights** (skill, agent-browser) | Covers ALL airlines including Southwest cash prices. Free. Economy/business comparison.                               | Prices can be inflated vs GDS. No points pricing.                                                      |
+| 4        | **Skiplagged** (MCP)                      | Hidden city fares. Zero config.                                                                                       | No Southwest. Can be noisy on small markets.                                                           |
+| 5        | **Kiwi.com** (MCP)                        | Virtual interlining (creative cross-airline routings). Zero config.                                                   | Returns garbage on small markets. No Southwest.                                                        |
+| —        | **Skyscanner** (skill, Patchright)        | Online travel agency fares (Trip.com, Mytrip, eDreams…) that often undercut airline-direct. Seller list with ratings. | Can hit a CAPTCHA (ask the user, see the skill). Always say who sells the fare.                        |
+| —        | **Travelpayouts** (skill)                 | Cached reference price plus cheapest-day/month calendar around the requested dates, in one call. Free.                | **Cached** (1–7 days old), not bookable. Verify any cheaper date live.                                 |
+| 6        | **Seats.aero** (skill)                    | Award flight availability across 25+ programs. The crown jewel for points.                                            | Cached data, not live. No cash prices. No Southwest.                                                   |
+| 7        | **SerpAPI** (skill, optional)             | Google Hotels search. Destination discovery (Google Travel Explore).                                                  | NOT for flights (inflated prices). Hotels and "where should I go?" only.                               |
+| 8        | **Southwest** (skill, Patchright)         | Fare classes, points pricing, Companion Pass. All 4 fare classes, cash + points.                                      | Pre-built Docker image: `ghcr.io/borski/sw-fares`. Or local Patchright (headed mode). ~20s per search. |
 
 ## The Standard Flight Search Workflow
 
-**Run ALL of these in parallel:** Duffel + Ignav + Google Flights + Skiplagged + Kiwi.
+**Run ALL of these in parallel:** Duffel + Ignav + Google Flights + Skiplagged + Kiwi + Skyscanner + Travelpayouts.
 
 Skiplagged and Kiwi are keyless MCP servers — they are available in every properly launched session. Attempt the tool call before ever claiming MCP is unavailable, and never substitute improvised browser scraping for these sources (see `fallback-and-resilience`).
 
@@ -90,8 +91,11 @@ Different country markets return different prices for the same route. Searching 
 3. **Ask the user before trying more** (e.g., third countries, VPN markets)
 
 This applies to:
+
 - **google-flights** via the `&gl=XX` URL parameter
 - **ignav** via the `market` field in the search payload
+- **skyscanner** via `--market XX` on the script
+- **travelpayouts** via the lowercase `market` query param (cached data, so market gaps are small)
 
 **Duffel and SerpAPI don't support market selection.**
 

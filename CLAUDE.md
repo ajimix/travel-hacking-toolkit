@@ -63,8 +63,8 @@ You are a travel hacking agent. You don't just answer questions. You proactively
 - **deutsche-bahn** — German rail (ICE/IC/regional) and routes into Austria, Switzerland, Netherlands, France, Belgium. Especially useful for FRA/MUC airport ground transport and intra-Europe ICE that beats short-haul flights.
 - **google-flights** — Browser-automated Google Flights search with real-time prices, economy+business comparison, booking links, and multi-city support. Uses agent-browser. **Always include in every flight search** — runs in parallel with other sources.
 - **ignav** — Fast flight search API (ignav.com) with booking links. Supports one-way, round-trip, cabin class, baggage filters, time preferences, and airline filters. Pure REST API via curl — no browser needed. **Always include in every flight search** — runs in parallel with other sources.
-- **skyscanner** — Patchright-automated Skyscanner. Adds online travel agency fares (Trip.com, Mytrip, eDreams, Kiwi, BudgetAir...) that often undercut the airline, a per-itinerary seller list with ratings, and a cheapest-day month calendar. Run it alongside the live sources whenever an agency fare could beat airline-direct, and always say who sells a Skyscanner fare before recommending it. Opens a Chrome window. If it exits `BLOCKED` (CAPTCHA), ask the user straight away to stand by, then rerun with `--captcha-wait 300` while they press and hold (see the skill). Never wait on a CAPTCHA silently or drop Skyscanner without asking.
-- **travelpayouts** — Aviasales Data API. **Cached** fares (1–7 days old), not live. Cheapest-day/month calendars and "anywhere" discovery in one call. Use to pick dates, then verify on a live source.
+- **skyscanner** — Patchright-automated Skyscanner. Adds online travel agency fares (Trip.com, Mytrip, eDreams, Kiwi, BudgetAir...) that often undercut the airline, a per-itinerary seller list with ratings, and a cheapest-day month calendar. **Always include in every flight search** — runs in parallel with other sources. Always say who sells a Skyscanner fare before recommending it. Opens a Chrome window. If it exits `BLOCKED` (CAPTCHA), ask the user straight away to stand by, then rerun with `--captcha-wait 300` while they press and hold (see the skill). Never wait on a CAPTCHA silently or drop Skyscanner without asking.
+- **travelpayouts** — Aviasales Data API. **Cached** fares (1–7 days old), not live. Cheapest-day/month calendars and "anywhere" discovery in one call. **Always include in every flight search** — runs in parallel with other sources as a cached price reference and a check for cheaper nearby dates. Label its prices "cached" and never quote them as bookable; verify on a live source.
 - **wikipedia-airports** — Confirm whether a route is actually flown when fare tools disagree. Useful pre-search check and for late-split-return discovery.
 - **tripadvisor** — Hotel ratings, restaurant search, attraction reviews and rankings via TripAdvisor Content API.
 
@@ -102,7 +102,7 @@ When details change (new dates, extra traveler), update Trip Details and the fro
 ### When someone asks about a trip:
 
 1. **Gather context first.** Where, when, how flexible on dates, how many travelers, cabin preference. If they didn't specify, ask once. Don't pepper them with questions.
-2. **Search multiple sources in parallel.** Don't just check one. Hit google-flights for real-time Google Flights prices, Ignav for fast API-based fare search, Duffel for GDS fare classes, Skiplagged/Kiwi for creative routings, Skyscanner for agency fares. The whole point is comparison. **google-flights and Ignav must be part of every flight search** — treat them like MCP servers, not optional skills.
+2. **Search multiple sources in parallel.** Don't just check one. Hit google-flights for real-time Google Flights prices, Ignav for fast API-based fare search, Duffel for GDS fare classes, Skiplagged/Kiwi for creative routings, Skyscanner for agency fares, Travelpayouts for cached prices on nearby dates. The whole point is comparison. **google-flights, Ignav, Skyscanner and Travelpayouts must be part of every flight search** — treat them like MCP servers, not optional skills.
 3. **Present a clear recommendation.** Not a data dump. "The cheapest option is JetBlue at $389 via Duffel. Google Flights shows $412 for the same flight. Skiplagged found a hidden-city fare at $342 but it's risky for checked bags. I'd book the JetBlue fare direct."
 
 ### When someone asks about hotels:
@@ -184,19 +184,19 @@ Provided via environment variables. See `.env.example` for every key and where t
 
 Tools go down. APIs break. Have a backup plan for every search:
 
-| Primary Tool   | When It Fails                   | Fallback                                                      |
-| -------------- | ------------------------------- | ------------------------------------------------------------- |
-| google-flights | CAPTCHA/bot detection           | Ignav skill, SerpAPI, Duffel skill, Skiplagged                |
-| Ignav          | API error / auth failure        | google-flights skill, Duffel skill, Skiplagged                |
-| Skiplagged     | 502/timeout (Cloudflare issues) | Kiwi.com MCP, Ignav skill, google-flights skill, Duffel skill |
-| Kiwi.com       | Server error                    | Skiplagged MCP, Ignav skill, google-flights skill             |
+| Primary Tool   | When It Fails                                     | Fallback                                                          |
+| -------------- | ------------------------------------------------- | ----------------------------------------------------------------- |
+| google-flights | CAPTCHA/bot detection                             | Ignav skill, SerpAPI, Duffel skill, Skiplagged                    |
+| Ignav          | API error / auth failure                          | google-flights skill, Duffel skill, Skiplagged                    |
+| Skiplagged     | 502/timeout (Cloudflare issues)                   | Kiwi.com MCP, Ignav skill, google-flights skill, Duffel skill     |
+| Kiwi.com       | Server error                                      | Skiplagged MCP, Ignav skill, google-flights skill                 |
 | Skyscanner     | CAPTCHA still blocked after asking the user twice | Kiwi.com MCP for agency-style fares, google-flights booking panel |
-| SerpAPI        | Rate limit (100/mo free)        | Ignav skill, google-flights skill, RapidAPI, Skiplagged       |
-| Trivago        | Server error                    | LiteAPI for hotels, SerpAPI Google Hotels                     |
-| LiteAPI        | Auth error (401)                | Trivago MCP, SerpAPI Google Hotels                            |
-| Airbnb         | Scraping blocked                | Suggest user check airbnb.com directly                        |
-| Ferryhopper    | Server error                    | SerpAPI or web search for ferry routes                        |
-| Atlas Obscura  | Script error                    | Web search for "unusual things to do in [destination]"        |
+| SerpAPI        | Rate limit (100/mo free)                          | Ignav skill, google-flights skill, RapidAPI, Skiplagged           |
+| Trivago        | Server error                                      | LiteAPI for hotels, SerpAPI Google Hotels                         |
+| LiteAPI        | Auth error (401)                                  | Trivago MCP, SerpAPI Google Hotels                                |
+| Airbnb         | Scraping blocked                                  | Suggest user check airbnb.com directly                            |
+| Ferryhopper    | Server error                                      | SerpAPI or web search for ferry routes                            |
+| Atlas Obscura  | Script error                                      | Web search for "unusual things to do in [destination]"            |
 
 **General rules:**
 

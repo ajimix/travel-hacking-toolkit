@@ -1,6 +1,6 @@
 ---
 name: skyscanner
-description: Search Skyscanner for flight prices via Patchright browser automation, including online travel agency (OTA) fares from Mytrip, Gotogate, Trip.com, eDreams, Kiwi and others that are often 10-25% below the airline's own price. Also has a cheapest-day month calendar and a per-itinerary seller breakdown that flags who actually sells the ticket. Use in any flight search where agency or budget-airline prices could beat the airline-direct fares from Duffel, Ignav or Google Flights, when the user asks "is there anything cheaper", mentions Skyscanner, or wants to know whether a cheap fare comes from the airline or an agency.
+description: Search Skyscanner for flight prices via Patchright browser automation, including online travel agency (OTA) fares from Mytrip, Gotogate, Trip.com, eDreams, Kiwi and others that are often 10-25% below the airline's own price. Also has a cheapest-day month calendar and a per-itinerary seller breakdown that flags who actually sells the ticket. Use whenever the user wants to find, compare or price flights, asks "is there anything cheaper", mentions Skyscanner, or wants to know whether a cheap fare comes from the airline or an agency. **Always include in every flight search** — runs in parallel with other sources.
 category: flights
 summary: Browser-automated Skyscanner. OTA fares (Trip.com, Mytrip, eDreams, Kiwi) vs airline-direct with seller ratings, month calendar.
 api_key: None (requires Patchright)
@@ -96,11 +96,11 @@ Prices come back in the market's currency (`$`, `£`, `€`...). Convert to the 
 
 Fold Skyscanner rows into the same comparison table as the other sources, with a **Sold by** column so OTA fares can't hide among airline fares:
 
-| #   | Airline | Stops  | Out (LAX-HNL) | Back (HNL-LAX) | Price | Sold by                         | Source        |
-| --- | ------- | ------ | ------------- | -------------- | ----- | ------------------------------- | ------------- |
-| 1   | Alaska  | Direct | 07:00-11:04   | 08:05-15:28    | $683  | Wizfair (agency, 4.7/5)         | Skyscanner US |
-| 2   | Alaska  | Direct | 07:00-11:04   | 08:05-15:28    | $807  | Expedia (agency, 4.8/5)         | Skyscanner US |
-| 3   | Alaska  | Direct | 07:00-11:04   | 08:05-15:28    | $927  | GOL (partner airline, 2.0/5)    | Skyscanner US |
+| #   | Airline | Stops  | Out (LAX-HNL) | Back (HNL-LAX) | Price | Sold by                      | Source        |
+| --- | ------- | ------ | ------------- | -------------- | ----- | ---------------------------- | ------------- |
+| 1   | Alaska  | Direct | 07:00-11:04   | 08:05-15:28    | $683  | Wizfair (agency, 4.7/5)      | Skyscanner US |
+| 2   | Alaska  | Direct | 07:00-11:04   | 08:05-15:28    | $807  | Expedia (agency, 4.8/5)      | Skyscanner US |
+| 3   | Alaska  | Direct | 07:00-11:04   | 08:05-15:28    | $927  | GOL (partner airline, 2.0/5) | Skyscanner US |
 
 Then say plainly what the agency discount buys and what it costs:
 
@@ -113,14 +113,14 @@ Then say plainly what the agency discount buys and what it costs:
 
 ## Failure modes
 
-| Symptom                                                | What to do                                                                                                                                                        |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BLOCKED: Skyscanner served a CAPTCHA` (exit code 3)  | Follow [When Skyscanner blocks you](#when-skyscanner-blocks-you): ask the user first, then rerun with `--captcha-wait 300`. Skip Skyscanner only if the user says so or two rounds fail. |
-| Sort tab click fails (stderr note)                     | Harmless. The script sorts the loaded options by price itself, but the very cheapest fare may not be among them. Compare against `summary.cheapest`.              |
-| `deals` parses no rows                                 | The layout probably changed. Read the raw text path in the output and extract sellers manually.                                                                   |
-| Wrong currency / language                              | A stale `ssculture` cookie in the profile. Delete the profile directory and rerun.                                                                                |
-| `Shared Chrome did not open port ... within 15s`      | Rare (startup normally takes ~2s). Run `close` and retry once; if it fails again, rerun with `SKYSCANNER_SHARED_BROWSER=0`.                                        |
-| `TIMEOUT`                                              | The script has a hard limit (`--timeout`, default 180s, plus `--captcha-wait`). Retry once; if it times out again, skip Skyscanner for this search.               |
+| Symptom                                              | What to do                                                                                                                                                                               |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BLOCKED: Skyscanner served a CAPTCHA` (exit code 3) | Follow [When Skyscanner blocks you](#when-skyscanner-blocks-you): ask the user first, then rerun with `--captcha-wait 300`. Skip Skyscanner only if the user says so or two rounds fail. |
+| Sort tab click fails (stderr note)                   | Harmless. The script sorts the loaded options by price itself, but the very cheapest fare may not be among them. Compare against `summary.cheapest`.                                     |
+| `deals` parses no rows                               | The layout probably changed. Read the raw text path in the output and extract sellers manually.                                                                                          |
+| Wrong currency / language                            | A stale `ssculture` cookie in the profile. Delete the profile directory and rerun.                                                                                                       |
+| `Shared Chrome did not open port ... within 15s`     | Rare (startup normally takes ~2s). Run `close` and retry once; if it fails again, rerun with `SKYSCANNER_SHARED_BROWSER=0`.                                                              |
+| `TIMEOUT`                                            | The script has a hard limit (`--timeout`, default 180s, plus `--captcha-wait`). Retry once; if it times out again, skip Skyscanner for this search.                                      |
 
 ## Limits
 
