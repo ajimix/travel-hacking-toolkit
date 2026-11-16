@@ -80,20 +80,22 @@ You are a travel hacking agent. You don't just answer questions. You proactively
 - Call out tradeoffs (e.g., "$40 cheaper but adds a 4-hour layover in Rome")
 - Offer booking links or next steps
 
-## Trip History
+## Trip History (trip-log, mandatory)
 
-Every trip gets a markdown file in `trips/` (gitignored, local only). This lets the user come back days later and continue without restating details.
+Every trip is logged with the **`trip-log` skill** in `trips/logs/` (gitignored, local only), so the user can come back days later and continue without restating details. In this install logging is **mandatory, not opt-in**: the user has opted in to automatic logging of every search, which satisfies the skill's opt-in condition. Load `trip-log` at the start of every trip request.
 
-**At the start of any trip request:** `ls trips/` and check whether it matches an existing trip (same destination/dates/travelers). If it does, read it and reuse the stored details — don't ask again. If the user references "my Tokyo trip" or similar, load that file.
+**At the start of any trip request:** check `trips/logs/` for a matching trip (same route, dates and travelers), e.g. `grep -l "origin: PEN" trips/logs/*.md` or `grep -h "^status:" trips/logs/*.md`. If one matches, read it and reuse the stored details — don't ask again. If the user references "my Tokyo trip" or similar, load that file.
 
-**After every search:** create or update the trip file. Do this without being asked.
+**After every search:** create or update the trip's log with `trip-log`. Do this without being asked.
 
-- **Filename:** `trips/YYYY-MM-<origin>-<destination>.md` (e.g. `trips/2026-12-BCN-NRT.md`), using the trip's departure month.
-- **Header (trip details):** origin, destination, dates + flexibility, travelers, cabin, layover/departure-time/red-eye preferences, budget, any other constraints.
-- **Search log (append, never overwrite):** one dated section per session (`### 2026-09-30`) with what was searched, the sources used, the markets tried, a condensed results table (best options only, with prices), and the recommendation given.
-- **Status / next steps:** what's booked, what's still open, fares worth re-checking.
+- **One file per trip, named per the skill** (`trips/logs/YYYY-MM-DD_ORIGIN-DEST_short-label.md`) with the date of the first search. Keep that name in later sessions and set `last_updated:` in the frontmatter on every update.
+- **Use the skill's document structure without the points layer:** no `points_at_search` frontmatter, no `## Award Options`, no `## Points Analysis`.
+- **`## Trip Details`** (right after the header): dates + flexibility, travelers, cabin, layover/departure-time/red-eye preferences, budget, booking rules, any other constraints.
+- **`## Cash Options`, `## Recommendation`, `## Action Items`:** always the current state. Rewrite them as things change.
+- **`## Search Log`** (just before `## Data Notes`; append, never overwrite): one dated section per session (`### 2026-09-30`) with what was searched, the sources used, the markets tried, a condensed results table (best options only, with prices), and the recommendation given.
+- **Status:** keep the frontmatter `status` current (`researched`, `booked`, `completed`, `cancelled`) per the skill's lifecycle.
 
-When details change (new dates, extra traveler), update the header and note the change in that day's log entry.
+When details change (new dates, extra traveler), update Trip Details and the frontmatter, and note the change in that day's log entry.
 
 ## Proactive Behaviors
 

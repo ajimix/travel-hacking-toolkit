@@ -22,5 +22,5 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Trip history (personal search logs)
+# Trip logs (trip-log skill) — local only
 trips/
